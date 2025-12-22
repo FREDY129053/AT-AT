@@ -1,0 +1,15 @@
+[project]
+name = "core"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "fredy129053", email = "fredy1290534518@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "certifi>=2025.11.12",
+    "httpx>=0.28.1",
+    "prance>=25.4.8.0",
+    "pydantic>=2.12.4",
+    "pyyaml>=6.0.3",
+]
