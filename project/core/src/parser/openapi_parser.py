@@ -35,7 +35,7 @@ class Response(BaseModel):
 
 class ResponseSchema(BaseModel):
     type: Optional[str | Dict[str, Any]]
-    items: Optional[Dict[str, Any]]
+    item_schema: Optional[Dict[str, Any]]
 
 
 class Operation(Enum):
@@ -130,6 +130,8 @@ class SwaggerProcessor:
         self.schema_useless_keys = [
             "xml",
             "additionalProperties",
+            "example",
+            "examples",
         ]  # Useless keys in schema
 
     async def __get_swagger_schema(self) -> str:
@@ -149,14 +151,14 @@ class SwaggerProcessor:
         self.base_endpoint_url = os.path.dirname(self.url)
         self.swagger_json_data = await self.__get_swagger_schema()
         # TODO: try/catch
-        parsed_spec = ResolvingParser(
+        parsed_spec_dict = ResolvingParser(
             spec_string=self.swagger_json_data,
             backend="openapi-spec-validator",
         ).specification
-        endpoints = parsed_spec.get("paths")
+        endpoints = parsed_spec_dict.get("paths")  # type: ignore
         assert endpoints is not None, "0 endpoints! WTF???"
 
-        _ = self.__parse_endpoints(endpoints)
+        _ = self.__parse_endpoints(endpoints)  # type: ignore
 
     def __parse_endpoints(self, endpoints_data: Dict[str, Any]):
         logger.info(f"Enpoints count = {len(endpoints_data)}")
@@ -167,12 +169,7 @@ class SwaggerProcessor:
                     method_data=method_data,
                     method_url=endpoint_url,
                 )
-                # if (
-                #     parsed_method is not None
-                #     and self.base_endpoint_url
-                #     + "/openbanking-test/v1/accounts/{accountResourceId}/balances"
-                #     == parsed_method.url
-                # ):
+
                 if parsed_method is not None:
                     _print_colorfull_method(
                         parsed_method.type.value,
@@ -195,11 +192,11 @@ class SwaggerProcessor:
             if method_params is not None
             else method_params
         )
-        # responses: Optional[List[Response]] = (
-        #    self.__parse_responses(method_responses)
-        #    if method_responses is not None
-        #    else method_responses
-        # )
+        responses: Optional[List[Response]] = (
+            self.__parse_responses(method_responses)
+            if method_responses is not None
+            else method_responses
+        )
         request_body: Optional[RequestBody] = (
             self.__parse_request_body(method_request_body)
             if method_request_body is not None
@@ -214,9 +211,8 @@ class SwaggerProcessor:
             input_formats=method_data.get("consumes", []),
             output_formats=method_data.get("produces", []),
             parameters=None if (params is None or len(params) <= 0) else params,
-            # responses=None if (responses is None or len(responses) < 0) else responses,
+            responses=None if (responses is None or len(responses) < 0) else responses,
             request_body=request_body,
-            responses=None,
         )
 
     def __parse_parameters(self, params_data: List[Dict[str, Any]]) -> List[Parameter]:
@@ -247,8 +243,8 @@ class SwaggerProcessor:
 
             parsed_params.append(
                 Parameter(
-                    name=param.get("name"),
-                    location=param.get("in"),
+                    name=param.get("name"),  # type: ignore
+                    location=param.get("in"),  # type: ignore
                     description=param.get("description"),
                     required=param.get("required", False),
                     deprecated=param.get("deprecated", False),
@@ -299,20 +295,37 @@ class SwaggerProcessor:
         parsed_responses = []
 
         for http_code, response_data in responses_data.items():
-            # Get '$ref' for response
-            ref = self.__find_key_in_dict(response_data, "$ref")
-            # Get type for return
-            out_type = self.__find_key_in_dict(response_data, "type")
+            response_schema = response_data.get("schema")
+            if response_schema is None:
+                if response_data.get("content"):
+                    response_schema = response_data["content"][
+                        next(iter(response_data["content"]))
+                    ]["schema"]
 
-            parsed_ref = self.__parse_ref(ref) if ref is not None else None
+            if response_schema:
+                # allOf особик
+                if response_schema.get("allOf"):
+                    all_of_data = response_schema["allOf"]
+                    final_object = {"type": "object", "properties": {}}
+                    for i in all_of_data:
+                        if i.get("properties"):
+                            final_object["properties"].update(
+                                self.__prepare_schema(i["properties"], False)
+                            )
+                        final_object["properties"].update(
+                            self.__prepare_schema(i, False)
+                        )
 
-            any_ref_in_parsed_schema = self.__find_key_in_dict(parsed_ref, "$ref")
-            if any_ref_in_parsed_schema:
-                parsed_ref = self.__parse_ref(any_ref_in_parsed_schema)
+                    response_schema = final_object
+
+            out_type = response_schema.get("type") if response_schema else None
+            response_schema = (
+                self.__prepare_schema(response_schema) if response_schema else None
+            )
 
             output_schema = ResponseSchema(
-                type=out_type if out_type == "array" else parsed_ref,
-                items=parsed_ref if out_type == "array" else None,
+                type=out_type,
+                item_schema=response_schema,
             )
 
             parsed_responses.append(
@@ -355,9 +368,8 @@ async def main():
     # )
 
     # TEST_URL = "https://bank.sandbox.cybrid.app/api/schema/v1/swagger.yaml"
-    TEST_URL = "https://fakerestapi.azurewebsites.net/swagger/v1/swagger.json"
+    # TEST_URL = "https://fakerestapi.azurewebsites.net/swagger/v1/swagger.json"
 
-    # _ = await collect_data(TEST_URL)
     s = SwaggerProcessor(TEST_URL)
     _ = await s.parse_swagger()
 
