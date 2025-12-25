@@ -127,7 +127,10 @@ class SwaggerProcessor:
     def __init__(self, swagger_url: str) -> None:
         self.url = swagger_url
         self.transport = httpx.AsyncHTTPTransport(retries=5, verify=False)
-        self.schema_useless_keys = ["xml"]  # Useless keys in schema
+        self.schema_useless_keys = [
+            "xml",
+            "additionalProperties",
+        ]  # Useless keys in schema
 
     async def __get_swagger_schema(self) -> str:
         async with httpx.AsyncClient(transport=self.transport) as client:
@@ -197,11 +200,11 @@ class SwaggerProcessor:
         #    if method_responses is not None
         #    else method_responses
         # )
-        # request_body: RequestBody = (
-        #    self.__parse_request_body(method_request_body)
-        #    if method_request_body is not None
-        #    else method_request_body
-        # )
+        request_body: Optional[RequestBody] = (
+            self.__parse_request_body(method_request_body)
+            if method_request_body is not None
+            else method_request_body
+        )
 
         return Method(
             url=self.base_endpoint_url + method_url,
@@ -212,9 +215,8 @@ class SwaggerProcessor:
             output_formats=method_data.get("produces", []),
             parameters=None if (params is None or len(params) <= 0) else params,
             # responses=None if (responses is None or len(responses) < 0) else responses,
-            # request_body=request_body,
+            request_body=request_body,
             responses=None,
-            request_body=None,
         )
 
     def __parse_parameters(self, params_data: List[Dict[str, Any]]) -> List[Parameter]:
@@ -324,15 +326,18 @@ class SwaggerProcessor:
         return parsed_responses
 
     def __parse_request_body(self, request_body_data: Dict[str, Any]) -> RequestBody:
-        data_schema = self.__find_key_in_dict(request_body_data, "$ref")
-        assert data_schema is not None, "Update parser))"
+        body_content = request_body_data.get("content")
+        assert body_content is not None, "WTF??"
+
+        body_schema = body_content[next(iter(body_content))].get("schema")
+
         description = request_body_data.get("description")
 
         return RequestBody(
             description=description
             if (description is not None and len(description) > 1)
             else None,
-            data_schema=self.__parse_ref(data_schema),
+            data_schema=self.__prepare_schema(body_schema, False),
             required=request_body_data.get("required", False),
         )
 
