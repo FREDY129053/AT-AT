@@ -1,12 +1,15 @@
-from collections import deque
 import os
-import yaml
+import json
 import asyncio
 import httpx
 import logging
+
 from typing import Any, Optional, List, Dict
 from pydantic import BaseModel
 from enum import Enum
+
+from prance import ResolvingParser
+from ruamel.yaml import YAML
 
 
 ###############################
@@ -48,14 +51,16 @@ class Operation(Enum):
 
 class Parameter(BaseModel):
     name: str
-    param_location: str
+    location: str
     description: Optional[str]
+    deprecated: bool
+    required: bool
     type: str | Dict[str, Any]
+    items: Optional[Dict[str, Any]]
+    schema_obj: Optional[Dict[str, Any]]
     maximum: Optional[int]
     mimimum: Optional[int]
     format: Optional[str]
-    items: Optional["ArrayItem"]
-    required: bool = False
     pattern: Optional[str]
     max_len: Optional[int]
 
@@ -63,13 +68,7 @@ class Parameter(BaseModel):
 class RequestBody(BaseModel):
     description: Optional[str]
     data_schema: Dict[str, Any]
-    required: bool = False
-
-
-class ArrayItem(BaseModel):
-    type: str | Dict[str, Any]
-    enum_items: Optional[List[str]]
-    default: Optional[str]
+    required: bool
 
 
 ###############################
@@ -130,7 +129,7 @@ class SwaggerProcessor:
         self.transport = httpx.AsyncHTTPTransport(retries=5, verify=False)
         self.schema_useless_keys = ["xml"]  # Useless keys in schema
 
-    async def __get_swagger_schema(self) -> Dict[str, Any]:
+    async def __get_swagger_schema(self) -> str:
         async with httpx.AsyncClient(transport=self.transport) as client:
             logger.info("Fetching data...")
 
@@ -138,15 +137,20 @@ class SwaggerProcessor:
             logger.info("Data fetched!")
 
             if "yaml" in self.url.split("/")[-1]:
-                return yaml.safe_load(response.text)
+                yaml_loader = YAML(typ="safe")
+                return json.dumps(yaml_loader.load(response.text), ensure_ascii=False)
 
-            return response.json()
+            return json.dumps(response.json(), ensure_ascii=False)
 
     async def parse_swagger(self):
         self.base_endpoint_url = os.path.dirname(self.url)
         self.swagger_json_data = await self.__get_swagger_schema()
-
-        endpoints = self.swagger_json_data.get("paths")
+        # TODO: try/catch
+        parsed_spec = ResolvingParser(
+            spec_string=self.swagger_json_data,
+            backend="openapi-spec-validator",
+        ).specification
+        endpoints = parsed_spec.get("paths")
         assert endpoints is not None, "0 endpoints! WTF???"
 
         _ = self.__parse_endpoints(endpoints)
@@ -188,16 +192,16 @@ class SwaggerProcessor:
             if method_params is not None
             else method_params
         )
-        responses: Optional[List[Response]] = (
-            self.__parse_responses(method_responses)
-            if method_responses is not None
-            else method_responses
-        )
-        request_body: RequestBody = (
-            self.__parse_request_body(method_request_body)
-            if method_request_body is not None
-            else method_request_body
-        )
+        # responses: Optional[List[Response]] = (
+        #    self.__parse_responses(method_responses)
+        #    if method_responses is not None
+        #    else method_responses
+        # )
+        # request_body: RequestBody = (
+        #    self.__parse_request_body(method_request_body)
+        #    if method_request_body is not None
+        #    else method_request_body
+        # )
 
         return Method(
             url=self.base_endpoint_url + method_url,
@@ -206,84 +210,88 @@ class SwaggerProcessor:
             description=method_data.get("description", None),
             input_formats=method_data.get("consumes", []),
             output_formats=method_data.get("produces", []),
-            parameters=None if (params is None or len(params) < 0) else params,
-            responses=None if (responses is None or len(responses) < 0) else responses,
-            request_body=request_body,
+            parameters=None if (params is None or len(params) <= 0) else params,
+            # responses=None if (responses is None or len(responses) < 0) else responses,
+            # request_body=request_body,
+            responses=None,
+            request_body=None,
         )
 
     def __parse_parameters(self, params_data: List[Dict[str, Any]]) -> List[Parameter]:
         parsed_params = []
 
         for param in params_data:
-            # Parse solo '$ref' param or 'schema' of parameter
-            param_schema = param.get("schema")
-            if param_schema is None:
-                if param.get("$ref"):
-                    param = self.__parse_ref(param["$ref"])
+            param_schema = param.get("schema", {})
+            param_type = param.get("type") or param_schema.get("type")
 
-            # Get base type
-            param_type = param.get("type")
-            # Get type of param from schema
-            if param_type is None:
-                param_schema = param.get("schema")
-                if param_schema is not None:
-                    param_type = param["schema"].get("type")
-            # Parse $ref param
-            if param_type is None:
-                param_type = self.__parse_ref(param["schema"]["$ref"])
+            additional_keys = ["pattern", "format", "maxLength"]
+            additional_result = {}
+            for akey in additional_keys:
+                value = param.get(akey)
+                if value is None and isinstance(param.get("schema"), Dict):
+                    value = param["schema"].get("key")
+                additional_result[akey] = value
 
-            array_item = None
+            schema_obj = None
+            if param_schema and param_type != "array":
+                schema_obj = self.__prepare_schema(param_schema, True, additional_keys)
+
+            items = None
             if param_type == "array":
-                # Get base items
-                arr_items = param.get("items", None)
-                # Get items from schema
-                if arr_items is None:
-                    arr_items = param["schema"].get("items", None)
-                # None items impossible, right??
-                assert arr_items is not None, "Items must be???"
-
-                arr_items_type = arr_items.get("type")
-                if arr_items_type is None:
-                    arr_items_type = self.__parse_ref(arr_items.get("$ref"))
-
-                array_item = ArrayItem(
-                    type=arr_items_type,
-                    enum_items=arr_items.get("enum", None),
-                    default=arr_items.get("default", None),
-                )
-
-            pattern = param.get("pattern")
-            if pattern is None:
-                if param.get("schema"):
-                    pattern = param["schema"].get("pattern")
-
-            format = param.get("format")
-            if format is None:
-                if param.get("schema"):
-                    format = param["schema"].get("format")
-
-            max_len = param.get("maxLength")
-            if max_len is None:
-                if param.get("schema"):
-                    max_len = param["schema"].get("maxLength")
+                array_items = param.get("items") or param_schema.get("items")
+                if array_items["type"] == "object":
+                    array_items = self.__prepare_schema(array_items, False)
+                items = array_items
 
             parsed_params.append(
                 Parameter(
                     name=param.get("name"),
-                    param_location=param.get("in"),
+                    location=param.get("in"),
                     description=param.get("description"),
-                    type="$ref" if param_type is None else param_type,
+                    required=param.get("required", False),
+                    deprecated=param.get("deprecated", False),
+                    type=param_type,
+                    schema_obj=schema_obj if schema_obj else None,
+                    items=items,
                     maximum=param.get("maximum"),
                     mimimum=param.get("mimimum"),
-                    format=format,
-                    items=array_item,
-                    required=param.get("required", False),
-                    pattern=pattern,
-                    max_len=max_len,
+                    format=additional_result["format"],
+                    pattern=additional_result["pattern"],
+                    max_len=additional_result["maxLength"],
                 )
             )
 
         return parsed_params
+
+    def __prepare_schema(
+        self,
+        schema_data: Dict[str, Any],
+        delete_type: bool = True,
+        additional_keys: List[str] = [],
+    ) -> Dict[str, Any]:
+        # Type used in global Parameter
+        if delete_type:
+            del schema_data["type"]
+        # These param gets below
+        for key in additional_keys:
+            if key in schema_data:
+                del schema_data[key]
+
+        keys_set = set(self.schema_useless_keys)
+
+        def delete_useless_keys(data: Any) -> Any:
+            if isinstance(data, Dict):
+                res = {}
+                for k, v in data.items():
+                    if k in keys_set:
+                        continue
+                    res[k] = delete_useless_keys(v)
+                return res
+            if isinstance(data, List):
+                return [delete_useless_keys(item) for item in data]
+            return data
+
+        return delete_useless_keys(schema_data)
 
     def __parse_responses(self, responses_data: Dict[str, Any]) -> List[Response]:
         parsed_responses = []
@@ -328,85 +336,20 @@ class SwaggerProcessor:
             required=request_body_data.get("required", False),
         )
 
-    def __parse_ref(self, ref_path: str) -> Dict[str, Any]:
-        # Get schema location and name without '#'
-        ref_parts = ref_path.split("/")[1:]
-        schema_name = ref_parts[-1]
-        schema_location = self.swagger_json_data[ref_parts[0]]
-        if schema_location.get(schema_name):
-            schema = schema_location[schema_name]
-        else:
-            schema = schema_location[ref_parts[1]][schema_name]
-
-        # Delete useless keys
-        for ukey in self.schema_useless_keys:
-            if ukey in schema:
-                del schema[ukey]
-
-        # Recursive parsing nested '$ref's
-        properties = schema.get("properties")
-        if properties is None:
-            any_ref = self.__find_key_in_dict(schema, "$ref")
-            if any_ref and schema.get("type") != "array":
-                schema = self.__parse_ref(any_ref)
-
-            if schema.get("type") == "array":
-                temp_ref = self.__find_key_in_dict(schema, "$ref")
-                if temp_ref:
-                    schema["items"] = self.__parse_ref(temp_ref)
-
-            return schema
-        for k, v in properties.items():
-            if v.get("$ref"):
-                item = self.__parse_ref(v["$ref"])
-                properties[k] = item
-            else:
-                property_type = v.get("type")
-                if property_type == "array":
-                    items = v["items"]
-                    if items.get("$ref"):
-                        item = self.__parse_ref(items["$ref"])
-                        properties[k] = item
-        schema["properties"] = properties
-
-        return schema
-
-    def __find_key_in_dict(
-        self, data_dict: Optional[Dict[str, Any]], target_key: str
-    ) -> Optional[str]:
-        if data_dict is None:
-            return None
-
-        found = None
-        queue = deque([data_dict])
-
-        while queue:
-            cur = queue.popleft()
-            if isinstance(cur, dict):
-                for k, v in cur.items():
-                    if k == target_key:
-                        found = v
-                        break
-                    if isinstance(v, (dict, list)):
-                        queue.append(v)
-            elif isinstance(cur, list):
-                for item in cur:
-                    if isinstance(item, (dict, list)):
-                        queue.append(item)
-
-        return found
-
 
 ###############################
 ######      MAIN DEFS     #####
 ###############################
 async def main():
     TEST_URL = "https://petstore.swagger.io/v2/swagger.json"
-    TEST_URL = "https://www.socrambanque.fr/openbanking-test/v4/swagger.json"
-    TEST_URL = (
-        "https://integration-openbanking-api.dev.fin.ag/swagger/v0.1/swagger.json"
-    )
-    TEST_URL = "https://bank.sandbox.cybrid.app/api/schema/v1/swagger.yaml"
+    # TEST_URL = "https://www.socrambanque.fr/openbanking-test/v4/swagger.json"
+
+    # Forbidden
+    # TEST_URL = (
+    #    "https://integration-openbanking-api.dev.fin.ag/swagger/v0.1/swagger.json"
+    # )
+
+    # TEST_URL = "https://bank.sandbox.cybrid.app/api/schema/v1/swagger.yaml"
     TEST_URL = "https://fakerestapi.azurewebsites.net/swagger/v1/swagger.json"
 
     # _ = await collect_data(TEST_URL)
