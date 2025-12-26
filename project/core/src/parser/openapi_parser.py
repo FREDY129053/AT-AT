@@ -5,70 +5,17 @@ import httpx
 import logging
 
 from typing import Any, Optional, List, Dict
-from pydantic import BaseModel
-from enum import Enum
-
+from ..schema.swagger_parser import (
+    SwaggerSpec,
+    Method,
+    RequestBody,
+    Response,
+    ResponseSchema,
+    Parameter,
+    Operation,
+)
 from prance import ResolvingParser
 from ruamel.yaml import YAML
-
-
-###############################
-######    MODELS SETUP    #####
-###############################
-class Method(BaseModel):
-    url: str
-    type: "Operation"
-    summary: Optional[str]
-    description: Optional[str]
-    input_formats: List[str]
-    output_formats: List[str]
-    responses: Optional[List["Response"]]
-    parameters: Optional[List["Parameter"]]
-    request_body: Optional["RequestBody"]
-
-
-class Response(BaseModel):
-    code: int | str
-    description: Optional[str]
-    return_schema: Optional["ResponseSchema"]
-
-
-class ResponseSchema(BaseModel):
-    type: Optional[str | Dict[str, Any]]
-    item_schema: Optional[Dict[str, Any]]
-
-
-class Operation(Enum):
-    get = "GET"
-    put = "PUT"
-    post = "POST"
-    delete = "DELETE"
-    options = "OPTIONS"
-    head = "HEAD"
-    patch = "PATCH"
-    trace = "TRACE"
-
-
-class Parameter(BaseModel):
-    name: str
-    location: str
-    description: Optional[str]
-    deprecated: bool
-    required: bool
-    type: str | Dict[str, Any]
-    items: Optional[Dict[str, Any]]
-    schema_obj: Optional[Dict[str, Any]]
-    maximum: Optional[int]
-    mimimum: Optional[int]
-    format: Optional[str]
-    pattern: Optional[str]
-    max_len: Optional[int]
-
-
-class RequestBody(BaseModel):
-    description: Optional[str]
-    data_schema: Dict[str, Any]
-    required: bool
 
 
 ###############################
@@ -123,7 +70,7 @@ logger = logging.getLogger(__name__)
 ###############################
 ######   PARSING CLASS    #####
 ###############################
-class SwaggerProcessor:
+class SwaggerParser:
     def __init__(self, swagger_url: str) -> None:
         self.url = swagger_url
         self.transport = httpx.AsyncHTTPTransport(retries=5, verify=False)
@@ -147,7 +94,7 @@ class SwaggerProcessor:
 
             return json.dumps(response.json(), ensure_ascii=False)
 
-    async def parse_swagger(self):
+    async def parse_swagger(self) -> SwaggerSpec:
         self.base_endpoint_url = os.path.dirname(self.url)
         self.swagger_json_data = await self.__get_swagger_schema()
         # TODO: try/catch
@@ -158,10 +105,13 @@ class SwaggerProcessor:
         endpoints = parsed_spec_dict.get("paths")  # type: ignore
         assert endpoints is not None, "0 endpoints! WTF???"
 
-        _ = self.__parse_endpoints(endpoints)  # type: ignore
+        return SwaggerSpec(
+            endpoints=self.__parse_endpoints(endpoints),  # type: ignore
+        )
 
-    def __parse_endpoints(self, endpoints_data: Dict[str, Any]):
+    def __parse_endpoints(self, endpoints_data: Dict[str, Any]) -> List[Method]:
         logger.info(f"Enpoints count = {len(endpoints_data)}")
+        parsed_endpoints = []
         for endpoint_url, methods in endpoints_data.items():
             for method, method_data in methods.items():
                 parsed_method = self.__parse_method(
@@ -171,10 +121,13 @@ class SwaggerProcessor:
                 )
 
                 if parsed_method is not None:
+                    parsed_endpoints.append(parsed_method)
                     _print_colorfull_method(
                         parsed_method.type.value,
                         f"{parsed_method.url} - {parsed_method.type.value}\n\tPARAMS: {parsed_method.parameters}\n\tREQUEST BODY: {parsed_method.request_body.__repr__()}\n\tRESPONSES: {parsed_method.responses}",
                     )
+
+        return parsed_endpoints
 
     def __parse_method(
         self, method: str, method_data: Dict[str, Any], method_url: str
@@ -370,7 +323,7 @@ async def main():
     # TEST_URL = "https://bank.sandbox.cybrid.app/api/schema/v1/swagger.yaml"
     # TEST_URL = "https://fakerestapi.azurewebsites.net/swagger/v1/swagger.json"
 
-    s = SwaggerProcessor(TEST_URL)
+    s = SwaggerParser(TEST_URL)
     _ = await s.parse_swagger()
 
 
