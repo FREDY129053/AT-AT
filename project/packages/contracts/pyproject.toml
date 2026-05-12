@@ -1,0 +1,17 @@
+[project]
+name = "contracts"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "fredy129053", email = "fredy1290534518@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+contracts = "contracts:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

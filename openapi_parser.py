@@ -1,11 +1,10 @@
 import os
 import json
-import asyncio
 import httpx
 import logging
 
 from typing import Any, Optional, List, Dict
-from ..schema.swagger_parser import (
+from .project.core.src.schema.swagger_parser import (
     SwaggerSpec,
     Method,
     RequestBody,
@@ -16,43 +15,6 @@ from ..schema.swagger_parser import (
 )
 from prance import ResolvingParser
 from ruamel.yaml import YAML
-
-
-###############################
-######    TEMP DEFS       #####
-###############################
-def _print_colorfull_method(method_type, s):
-    COLORS = {
-        "reset": "\033[0m",
-        "red": "\033[31m",
-        "green": "\033[32m",
-        "yellow": "\033[33m",
-        "blue": "\033[34m",
-        "magenta": "\033[35m",
-        "cyan": "\033[36m",
-        "grey": "\033[90m",
-    }
-    match method_type:
-        case "GET":
-            color = COLORS["green"]
-        case "POST":
-            color = COLORS["blue"]
-        case "PUT":
-            color = COLORS["cyan"]
-        case "DELETE":
-            color = COLORS["red"]
-        case "OPTIONS":
-            color = COLORS["yellow"]
-        case "HEAD":
-            color = COLORS["magenta"]
-        case "PATCH":
-            color = COLORS["grey"]
-        case "TRACE":
-            color = COLORS["reset"]
-        case _:
-            color = COLORS["reset"]
-    print(f"{color}{s}{COLORS['reset']}\n")
-
 
 ###############################
 ######    LOGGER SETUP    #####
@@ -110,7 +72,6 @@ class SwaggerParser:
         )
 
     def __parse_endpoints(self, endpoints_data: Dict[str, Any]) -> List[Method]:
-        logger.info(f"Enpoints count = {len(endpoints_data)}")
         parsed_endpoints = []
         for endpoint_url, methods in endpoints_data.items():
             for method, method_data in methods.items():
@@ -122,11 +83,8 @@ class SwaggerParser:
 
                 if parsed_method is not None:
                     parsed_endpoints.append(parsed_method)
-                    _print_colorfull_method(
-                        parsed_method.type.value,
-                        f"{parsed_method.url} - {parsed_method.type.value}\n\tPARAMS: {parsed_method.parameters}\n\tREQUEST BODY: {parsed_method.request_body.__repr__()}\n\tRESPONSES: {parsed_method.responses}",
-                    )
 
+        logger.info(f"Endpoints count = {len(parsed_endpoints)}")
         return parsed_endpoints
 
     def __parse_method(
@@ -306,26 +264,3 @@ class SwaggerParser:
             data_schema=self.__prepare_schema(body_schema, False),
             required=request_body_data.get("required", False),
         )
-
-
-###############################
-######      MAIN DEFS     #####
-###############################
-async def main():
-    TEST_URL = "https://petstore.swagger.io/v2/swagger.json"
-    # TEST_URL = "https://www.socrambanque.fr/openbanking-test/v4/swagger.json"
-
-    # Forbidden
-    # TEST_URL = (
-    #    "https://integration-openbanking-api.dev.fin.ag/swagger/v0.1/swagger.json"
-    # )
-
-    # TEST_URL = "https://bank.sandbox.cybrid.app/api/schema/v1/swagger.yaml"
-    # TEST_URL = "https://fakerestapi.azurewebsites.net/swagger/v1/swagger.json"
-
-    s = SwaggerParser(TEST_URL)
-    _ = await s.parse_swagger()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
