@@ -43,8 +43,8 @@ class SchemaParser:
         return info
 
     def get_path_schema(self, path_data: PathInfo) -> PathSchema:
-        assert self.schema is not None, "Schema MUST be"
-        data = self.raw_schema.get("paths")[path_data.path][path_data.method.lower()]
+        assert self.raw_schema is not None, "Schema MUST be"
+        data: dict = self.raw_schema.get("paths", {})[path_data.path][path_data.method.lower()] # type: ignore
 
         responses_list: list[ResponseInfo] = []
         for i, j in data.get("responses", {}).items():
