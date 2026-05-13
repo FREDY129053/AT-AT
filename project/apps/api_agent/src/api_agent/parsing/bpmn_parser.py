@@ -38,6 +38,7 @@ class BPMNParser:
 
     def parse_bpmn(self) -> Dict[str, Any]:
         parser = XMLParser(remove_comments=True)
+        # TODO: ошибка при передаче НЕ файла
         root: _Element = parse(self.bpmn_file, parser).getroot()
 
         processes = []

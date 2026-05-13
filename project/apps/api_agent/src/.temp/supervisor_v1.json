@@ -1,0 +1,38 @@
+{
+  "score": 2.7,
+  "comments": [
+    {
+      "step_id": "Activity_1gj3tvy",
+      "remarks": [
+        "The check for `$.created.title` is invalid: the provided response schema for POST /things does not include a `title` field under `created`. Only `id` is defined.",
+        "Missing a `json_path_type` check to validate that `$.created.id` is an integer, as required by the response schema.",
+        "Missing a ComplexCheck to combine the HTTP status code validation with the response field validations for stronger failure isolation."
+      ]
+    },
+    {
+      "step_id": "Activity_0ck8big",
+      "remarks": [
+        "The `external_state` check is incorrectly placed on this step. External state validation must occur on the **next step after the external step** (i.e., `Activity_15jwrwn`), not here.",
+        "The HTTP status code checks in the ComplexCheck are contradictory and nonsensical: `>=200`, `<300`, and `!=200` cannot all be true simultaneously. This renders the entire ComplexCheck useless.",
+        "The failure message for the ComplexCheck is misleading: it claims the status code must be a 'non-canonical success (2xx but not 200)', but the schema only defines 200 as valid for GET /things/{thing_id}.",
+        "Missing a `json_path_type` check to validate that `$.id` is an integer, as required by the response schema."
+      ]
+    },
+    {
+      "step_id": "Activity_15jwrwn",
+      "remarks": [
+        "The `external_state` check for the moderation outcome (`approved`/`rejected`) is missing. This step must include a ComplexCheck combining HTTP success with the external state validation from `Activity_1b831bn`.",
+        "The severity for the non-canonical DELETE status code is incorrectly set to `warning`. DELETE returning a 2xx code other than 204 should be a `warning`, but the message incorrectly states that 200 is 'non-canonical' when the schema **only defines 200** as valid. This is a defect in the check logic.",
+        "Missing a `json_path_type` check to validate that `$.id` is an integer, as required by the response schema.",
+        "Missing a `json_path_equals` check to ensure the returned `$.id` matches the `thing_id` from the bundle (as was correctly done in `Activity_0ck8big`)."
+      ]
+    },
+    {
+      "step_id": "Activity_1gvfds5",
+      "remarks": [
+        "The check for HTTP status code 404 is correct, but the failure message is misleading: it states 'on a previously deleted resource', but the process does not guarantee the resource was deleted (the first DELETE could have failed). The message should focus on the expected outcome of the second DELETE attempt.",
+        "Missing a `json_path_exists` check with `negate: true` to explicitly verify that no response body (or no `id` field) is returned for a 404, as the schema does not define a response body for 404."
+      ]
+    }
+  ]
+}

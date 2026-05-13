@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PathInfo(BaseModel):
@@ -23,3 +23,10 @@ class PathSchema(BaseModel):
 class ResponseInfo(BaseModel):
     code: int
     resp_schema: dict
+
+class Endpoint(BaseModel):
+    path: str = Field(description="The endpoint path")
+    method: str = Field(description="The endpoint method")
+
+class Endpoints(BaseModel):
+    endpoints: list[Endpoint] = Field(description="All using endpoints in process", default_factory=list)

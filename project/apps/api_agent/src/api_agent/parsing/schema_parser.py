@@ -11,7 +11,7 @@ from schemathesis.core.errors import LoaderError
 from schemathesis.generation import GenerationMode
 from schemathesis.specs.openapi.schemas import OpenApiSchema
 
-from ..schemas.openapi import PathInfo, PathSchema, ResponseInfo
+from ..schemas.openapi import PathInfo, PathSchema, ResponseInfo, Endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class SchemaParser:
 
         return info
 
-    def get_path_schema(self, path_data: PathInfo) -> PathSchema:
+    def get_path_schema(self, path_data: Endpoint) -> PathSchema:
         assert self.raw_schema is not None, "Schema MUST be"
         data: dict = self.raw_schema.get("paths", {})[path_data.path][path_data.method.lower()] # type: ignore
 
@@ -159,5 +159,5 @@ class SchemaParser:
         schema.raw_schema = raw_schema_copy
         return schema
 
-    def __fill_schema(self, schema: OpenApiSchema):
+    def __fill_schema(self, schema: OpenApiSchema) -> OpenApiSchema:
         return self.__fill_responses(schema)

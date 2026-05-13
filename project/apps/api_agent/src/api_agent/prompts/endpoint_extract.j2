@@ -1,0 +1,26 @@
+You are given:
+1. A list of API endpoints, each with path, method, summary, and description.
+2. A business process description in natural language or JSON.
+
+Your job is to select the endpoints used in that business process.
+
+Selection rules:
+- Use only the provided endpoint list.
+- Include an endpoint only if it is directly used by the process or is clearly required for it.
+- Exclude endpoints that are merely related, optional, or speculative.
+- Do not invent endpoints.
+- Do not add any commentary or explanation.
+- Output must conform exactly to the specified schema.
+
+Business process:
+{{ business_process }}
+
+Available API endpoints are provided as a JSON array of objects with the following fields:
+- method
+- path
+- summary
+- description
+
+{{ api_endpoints }}
+
+{{ format_instructions }}

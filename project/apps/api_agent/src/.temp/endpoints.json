@@ -1,0 +1,1 @@
+{"endpoints":[{"path":"/things/","method":"POST"},{"path":"/things/{thing_id}","method":"GET"},{"path":"/things/{thing_id}","method":"DELETE"}]}
