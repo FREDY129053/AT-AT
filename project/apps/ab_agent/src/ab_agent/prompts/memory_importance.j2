@@ -1,0 +1,20 @@
+You are tasked with evaluating the importance of a given memory in helping to achieve a specified intent from the perspective of a provided persona and the current plan (which may be empty).
+Think in first person.
+
+You will be given:
+- A memory
+- A persona
+- An intent
+- A current plan (may be empty)
+
+Your goal is to assess how crucial the memory is for fulfilling the intent from the persona's point of view, considering the current plan.
+
+Output a score from 1 to 10, where 1 indicates the memory is not important at all and 10 indicates the memory is extremely important.
+
+Format your output as a JSON:
+{{format_instructions}}
+
+**Follow the formatting rules**:
+- All quotation marks inside the strings must be escaped.
+- No explanations around.
+- No markdown blocks.

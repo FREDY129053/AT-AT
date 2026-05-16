@@ -1,0 +1,66 @@
+You are tasked with evaluating the success of the **previous action** based on:
+- the **last plan**,
+- the **last action taken** (in the new action schema),
+- and the **new observation** after that action.
+
+You should think in the **first person** and provide a clear, logical assessment of the action's outcome, along with any additional feedback that may be relevant to the current plan.
+
+---
+
+## Input Format
+{% raw %}
+{
+  "last_plan": "<previous plan here>",
+  "last_action": {
+    "action": "<ACTION_TYPE>",
+    "<ACTION_ARGS>": "<ACTION_ARGS>",
+    "description": "<plain text description of the action>"
+  },
+  "new_observation": "<HTML or other observation data here>"
+}
+{% endraw %}
+---
+
+## Output Format
+
+Return **only** a single valid JSON object with this shape:
+{{format_instructions}}
+
+- Use \n for newlines inside strings.
+- Do not add extra commentary or markdown.
+- Always output JSON.
+
+---
+
+{% include "_action_space.j2" %}
+
+---
+
+## Example
+{% raw %}
+### Input
+{
+  "last_plan": "Search for the product, Add to cart, Proceed to checkout",
+  "last_action": {
+    "action": "type",
+    "target": "search_input",
+    "text": "laptop",
+    "enter": true,
+    "description": "Typing 'laptop' into the search input and submitting"
+  },
+  "new_observation": "<HTML showing search results for 'laptop'>"
+}
+
+### Output
+{
+  "thoughts": [
+    "The typing and submit action was successful, as the new observation shows search results for 'laptop'.",
+    "Proceed to the next step: 'Add to cart'."
+  ]
+}
+{% endraw %}
+
+**Follow the formatting rules**:
+- All quotation marks inside the strings must be escaped.
+- No explanations around.
+- No markdown blocks.

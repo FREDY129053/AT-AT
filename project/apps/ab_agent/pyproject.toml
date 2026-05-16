@@ -7,16 +7,28 @@ authors = [
     { name = "fredy129053", email = "fredy1290534518@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "shared",
+    "jinja2>=3.1.6",
+    "langchain>=1.2.15",
+    "langchain-community>=0.4.1",
+    "langchain-huggingface>=1.2.1",
+    "langchain-mistralai>=1.1.2",
+    "pydantic>=2.12.5",
+    "pandas>=3.0.1",
+    "playwright>=1.58.0",
+    "beautifulsoup4>=4.14.3",
+    "selenium>=4.41.0",
+    "tiktoken>=0.12.0",
+]
 
 [project.scripts]
-ab-agent = "ab_agent:main"
+ab-agent = "ab_agent.main:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
+requires = ["uv_build>=0.11.13,<0.12"]
+build-backend = "uv_build"
 
 [tool.uv.sources]
-contracts = { workspace = true }
-shared = { workspace = true }
+contracts = { path = "../../packages/contracts", editable = true }
+shared = { path = "../../packages/shared", editable = true }

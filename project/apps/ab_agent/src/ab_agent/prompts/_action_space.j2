@@ -1,0 +1,37 @@
+# Action Space (New Schema)
+
+Each action object must include an `action` key specifying one of the following types. Include required fields exactly as shown.
+
+{% raw %}
+## Click
+{ "action": "click", "target": "<element_semantic_id>", "description": "Clicking ..." }
+
+## Type (with optional Enter submit)
+{ "action": "type", "target": "<input_semantic_id>", "text": "<text>", "enter": true, "description": "Typing and submitting ..." }
+
+## Hover
+{ "action": "hover", "target": "<element_semantic_id>", "description": "Hovering ..." }
+
+## Select (e.g., dropdowns)
+{ "action": "select", "target": "<select_semantic_id>", "value": "<option_value>", "description": "Selecting ..." }
+
+## Clear (clear an input field)
+{ "action": "clear", "target": "<input_semantic_id>", "description": "Clearing ..." }
+
+## Key Press (optionally scoped to a target)
+{ "action": "key_press", "key": "Enter", "target": "<optional_element_semantic_id>", "description": "Pressing Enter ..." }
+
+## Navigation
+{ "action": "goto_url", "url": "https://example.com", "description": "Navigating ..." }
+{ "action": "back",     "description": "Going back ..." }
+{ "action": "forward",  "description": "Going forward ..." }
+{ "action": "refresh",  "description": "Refreshing ..." }
+
+## Tabs
+{ "action": "new_tab",    "url": "https://example.com", "description": "Opening in new tab ..." }
+{ "action": "switch_tab", "tab_id": 1, "description": "Switching tab ..." }
+{ "action": "close_tab",  "tab_id": 1, "description": "Closing tab ..." }
+
+## Terminate (only if explicitly instructed by the step)
+{ "action": "terminate", "type": "<'error' or 'success'>", "description": "Terminating ..." }
+{% endraw %}
