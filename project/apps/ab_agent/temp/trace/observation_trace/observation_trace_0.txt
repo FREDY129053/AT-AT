@@ -1,0 +1,23 @@
+I see a webpage for Playwright, focused on the "Installation" documentation. At the top, there's a navigation bar with the Playwright logo and bolded text "Playwright", followed by links labeled "Docs" (currently selected), "MCP", "CLI", and "API". There's also a dropdown or button labeled "Node.js" and two buttons: one for toggling between dark and light mode (currently set to system mode) and another for search with the label "Search (Ctrl+K)".
+
+    The main content area starts with breadcrumbs showing "Getting Started > Installation". The page title is "Installation", followed by an "Introduction" section explaining that Playwright Test is an end-to-end test framework for modern web apps, supporting Chromium, WebKit, and Firefox on multiple platforms, including mobile emulation. It lists what I will learn: "How to install Playwright", "What's installed", "How to run the example test", and "How to open the HTML test report".
+
+    The "Installing Playwright" section describes two methods: using npm, yarn, or pnpm, and using the VS Code Extension. For npm/yarn/pnpm, the command `npminit playwright@latest` is shown in a code block, with a note to choose or confirm options like TypeScript/JavaScript, tests folder name, GitHub Actions workflow, and browser installation. The VS Code Extension is mentioned as an alternative for creating and running tests.
+
+    The "What's Installed" section lists files and directories created by Playwright, including `playwright.config.ts`, `package.json`, `package-lock.json` (or equivalent for yarn/pnpm), and a sample test file in the `tests/` directory. It explains that the config file centralizes settings like browsers, timeouts, and reporters.
+
+    The "Running the Example Test" section shows the command `npx playwrighttest` to run tests headlessly in parallel across multiple browsers. Tips are provided for running tests in headed mode (`--headed`), targeting a specific browser (`--project=chromium`), running a single file, or opening the UI mode (`--ui`). An image placeholder suggests there’s a screenshot of tests running in the command line.
+
+    The "HTML Test Reports" section mentions that an HTML reporter provides a filterable dashboard for test results, accessible via `npx playwright show-report`. Another image placeholder indicates a screenshot of the HTML report.
+
+    The "Running the Example Test in UI Mode" section describes UI mode for watch mode, live step view, and debugging, launched with `npx playwrighttest--ui`. A third image placeholder suggests a screenshot of UI mode. A link to a detailed guide on UI mode is provided.
+
+    The "Updating Playwright" section gives commands to update Playwright and its browsers, including `npminstall-D@playwright/test@latest` and `npx playwrightinstall--with-deps`, as well as checking the installed version with `npx playwright--version`.
+
+    The "System requirements" section lists supported environments: Node.js versions 20.x, 22.x, or 24.x; Windows 11+, Windows Server 2019+, or WSL; macOS 14 (Sonoma) or later; and Debian 12/13 or Ubuntu 22.04/24.04 (x86-64 or arm64).
+
+    The "What's next" section links to further topics: writing tests with assertions and locators, running single or multiple tests, generating tests with Codegen, and viewing test traces.
+
+    At the bottom, there’s a "Next" button linking to "Writing tests". The left sidebar mirrors the main sections: Introduction, Installing Playwright (with subsections for npm/yarn/pnpm and VS Code Extension), What's Installed, Running the Example Test, HTML Test Reports, UI Mode, Updating Playwright, System Requirements, and What's Next.
+
+    The footer contains three columns: "Learn" with links to Getting Started, Playwright Training, Learn Videos, and Feature Videos; "Community" with links to Stack Overflow, Discord, Twitter, and LinkedIn; and "More" with links to GitHub, YouTube, Blog, Ambassadors, and Microsoft Privacy Statement. The footer concludes with "Copyright © 2026 Microsoft".

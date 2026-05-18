@@ -4,7 +4,7 @@ import json
 import random
 from pathlib import Path
 
-from . import logger
+from . import logger, rabbit_temp
 from .agent import Agent
 from .environment import WebAgentEnv
 
@@ -127,6 +127,7 @@ async def run_agent(steps, *, trace: bool = False, headless: bool = True):
                 f.write(await env.page.content())
         
         action = await policy.forward(env)
+        action_trace.append(action)
 
         # targets = [
         #     "docs",
@@ -184,9 +185,16 @@ async def run_agent(steps, *, trace: bool = False, headless: bool = True):
         logger.info(f"Taking action {action}")
         logger.info(f"Action: {steps_taken + 1} out of {max_steps}")
         obs = await env.step(str(action))
+        
+        log = {}
 
         await asyncio.sleep(5)
         steps_taken += 1
 
         if obs.get("terminated"):
+            action = json.loads(action)
+            if action['action'] == 'terminate':
+                log['trajectory_flag'] = action['type']
+                log['trajectory_steps'] = steps_taken
+                rabbit_temp(log)
             break

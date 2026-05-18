@@ -1,0 +1,46 @@
+I see a webpage for Playwright, an end-to-end test framework. At the very top, there is a search bar with the label "Search" and a placeholder text "Search docs" inside an empty input field. Below the search bar, it says "No recent searches." There is also a footer in the search dropdown indicating "Search by" followed by a list: "to select," "to navigate," and "to close."
+
+    The main navigation bar includes the Playwright logo followed by bold text "Playwright," and links labeled "Docs" (currently selected), "MCP," "CLI," and "API." There is also a dropdown button labeled "Node.js." On the right side of the navigation bar, there are two buttons: one for toggling between dark and light mode (currently set to system mode) and another labeled "Search" with a keyboard shortcut "Ctrl+K" indicated as "Search (Ctrl+K)."
+
+    The main content area starts with a breadcrumb navigation showing "Getting Started" followed by "Installation." The page title is "Installation." Below the title, there is a section titled "Introduction" with a paragraph describing Playwright Test as an end-to-end test framework for modern web apps, mentioning its features such as test runner, assertions, isolation, parallelization, and rich tooling. It supports Chromium, WebKit, and Firefox on Windows, Linux, and macOS, both locally and in CI, headless or headed, with native mobile emulation for Chrome (Android) and Mobile Safari. Below this, there is a list titled "You will learn" with links for "How to install Playwright," "What's installed," "How to run the example test," and "How to open the HTML test report."
+
+    The next section is "Installing Playwright," which states to get started by installing Playwright using one of the following methods. The first method is "Using npm, yarn or pnpm," with a tabbed interface showing options for "npm," "yarn," and "pnpm." The "npm" tab is selected by default, displaying the command `npminit playwright@latest`. Below the command, there is a list of prompts to choose or confirm: "TypeScript or JavaScript (default: TypeScript),"; "Tests folder name (default: `tests` or `e2e` if `tests` already exists),"; "Add a GitHub Actions workflow (recommended for CI),"; and "Install Playwright browsers (default: yes)." It mentions that the command can be re-run later and does not overwrite existing tests. The second method is "Using the VS Code Extension," with a link labeled "VS Code Extension."
+
+    The "What's Installed" section describes that Playwright downloads required browser binaries and creates a scaffold with the following structure:
+    ```
+    playwright.config.ts  # Test configuration
+    package.json
+    package-lock.json     # Or yarn.lock / pnpm-lock.yaml
+    tests/
+      example.spec.ts     # Minimal example test
+    ```
+    It explains that `playwright.config` centralizes configuration, and `tests/` contains a minimal starter test. Dependencies are added to the existing `package.json`.
+
+    The "Running the Example Test" section explains that by default, tests run headless in parallel across Chromium, Firefox, and WebKit, with output and aggregated results displayed in the terminal. There is a tabbed interface for running tests using "npm," "yarn," or "pnpm," with the "npm" tab selected by default, showing the command `npx playwrighttest`. Below the command, there is an image placeholder for "tests running in command line." Tips are provided for running tests with additional options: `--headed` to see the browser window, `--project=chromium` to run a single project/browser, `npx playwright test tests/example.spec.ts` to run one file, and `--ui` to open testing UI. There is a link labeled "Running Tests" for more details.
+
+    The "HTML Test Reports" section mentions that after a test run, the HTML Reporter provides a dashboard filterable by browser, passed, failed, skipped, flaky tests, and more. It allows clicking a test to inspect errors, attachments, and steps, and auto-opens only when failures occur. The command `npx playwright show-report` is provided to open the report manually, with a tabbed interface for "npm," "yarn," or "pnpm." There is an image placeholder for "HTML Report."
+
+    The "Running the Example Test in UI Mode" section describes running tests with UI Mode for watch mode, live step view, time travel debugging, and more. The command `npx playwrighttest--ui` is provided in a tabbed interface for "npm," "yarn," or "pnpm." There is an image placeholder for "UI Mode" and a link to a "detailed guide on UI Mode."
+
+    The "Updating Playwright" section provides commands to update Playwright and download new browser binaries and dependencies. The "npm" tab is selected by default, showing the commands:
+    ```
+    npminstall -D @playwright/test@latest
+    npx playwrightinstall --with-deps
+    ```
+    It also provides a command to check the installed version: `npx playwright--version`, again in a tabbed interface for "npm," "yarn," or "pnpm."
+
+    The "System requirements" section lists the following requirements:
+    - Node.js: latest 20.x, 22.x, or 24.x.
+    - Windows 11+, Windows Server 2019+, or Windows Subsystem for Linux (WSL).
+    - macOS 14 (Sonoma) or later.
+    - Debian 12 / 13, Ubuntu 22.04 / 24.04 (x86-64 or arm64).
+
+    The "What's next" section includes links for:
+    - "Write tests using web-first assertions, fixtures, and locators"
+    - "Run single or multiple tests; headed mode"
+    - "Generate tests with Codegen"
+    - "View a trace of your tests"
+
+    On the right side of the main content, there is a navigation link labeled "Next" pointing to "Writing tests." Below the main content, there is a table of contents listing all sections: "Introduction," "Installing Playwright" (with sub-sections "Using npm, yarn or pnpm" and "Using the VS Code Extension"), "What's Installed," "Running the Example Test," "HTML Test Reports," "Running the Example Test in UI Mode," "Updating Playwright," "System requirements," and "What's next."
+
+    The footer contains three columns. The first column is labeled "Learn" with links to "Getting started," "Playwright Training," "Learn Videos," and "Feature Videos." The second column is labeled "Community" with links to "Stack Overflow," "Discord," "Twitter," and "LinkedIn." The third column is labeled "More" with links to "GitHub," "YouTube," "Blog," "Ambassadors," and "Microsoft Privacy Statement." At the bottom of the footer, there is a copyright notice: "Copyright © 2026 Microsoft."

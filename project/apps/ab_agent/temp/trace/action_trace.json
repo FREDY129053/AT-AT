@@ -1,0 +1,4 @@
+[
+  "{\"action\": \"click\", \"target\": \"search_k\", \"description\": \"Clicking the search button to initiate a search for 'Playwright Test Agents'.\"}",
+  "{\"action\": \"type\", \"target\": \"search_no_recent_sea.search_docs\", \"text\": \"Playwright Test Agents\", \"enter\": false, \"description\": \"Typing 'Playwright Test Agents' into the search input field.\"}"
+]
