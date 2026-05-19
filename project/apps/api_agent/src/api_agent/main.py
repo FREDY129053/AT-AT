@@ -6,8 +6,9 @@ from langchain_mistralai.chat_models import ChatMistralAI
 
 from .parsing.bpmn_parser import BPMNParser
 from .parsing.schema_parser import SchemaParser
-from .schemas.ir import GenerateChecksResult, IRPrompt, SupervisorAnswer
+from .schemas.ir import GenerateChecksResult, IRPrompt, SupervisorAnswer, CHECK_ADAPTER
 from .schemas.openapi import Endpoints
+from . import logger
 
 
 def write_resp_to_file(response, filepath):
@@ -29,16 +30,11 @@ def get_template(filename) -> str:
 
 
 def main():
-    import logging
-
-    logger = logging.getLogger(__name__)
-    logger.info("API TESTER START")
+    IS_CHAT = True
 
     parser = SchemaParser("http://localhost:8000/openapi.json")
     paths = parser.get_all_paths() or []
     logger.info(f"ALL METHODS LEN = {len(paths)}")
-
-    IS_CHAT = True
 
     endpoints = [path.model_dump() for path in paths]
     llm = ChatMistralAI(
@@ -80,6 +76,10 @@ def main():
     supervisor_parser = PydanticOutputParser(pydantic_object=SupervisorAnswer)
     ##############################################################################
 
+    # with open("./src/.temp/AAA.txt", 'w') as file:
+    #     t = json.dumps(CHECK_ADAPTER.json_schema(), indent=None)
+    #     file.write(t)
+
     ##############################################################################
     if IS_CHAT:
         logger.info("Asking LLM...")
@@ -88,6 +88,7 @@ def main():
         generate_checks_chain = generate_checks_prompt | llm | generate_checks_parser
         supervisor_chain = supervisor_prompt | llm | supervisor_parser
 
+        logger.info("Extracting endpoints...")
         extract_endpoints_chain_res: Endpoints = extract_endpoints_chain.invoke(
             {
                 "business_process": process_json,
@@ -103,6 +104,7 @@ def main():
             resp_schemas.append(schema.model_dump(exclude=("params")))  # type: ignore
             param_schemas.append(schema.model_dump(exclude=("responses")))  # type: ignore
 
+        logger.info("Generating graph...")
         generate_graph_chain_res: IRPrompt = generate_graph_chain.invoke(
             {
                 "format_instructions": generate_graph_parser.get_format_instructions(),
@@ -111,6 +113,7 @@ def main():
             }
         )
 
+        logger.info("Generating checks...")
         generate_checks_chain_res: GenerateChecksResult = generate_checks_chain.invoke(
             {
                 "format_instructions": generate_checks_parser.get_format_instructions(),
@@ -122,6 +125,7 @@ def main():
             }
         )
 
+        logger.info("Supervisor...")
         supervisor_chain_res: SupervisorAnswer = supervisor_chain.invoke(
             {
                 "business_process_json": process_json,
@@ -130,6 +134,7 @@ def main():
                 "format_instruction": supervisor_parser.get_format_instructions(),
                 "request_schemas": param_schemas,
                 "response_schemas": resp_schemas,
+                "used_checks": CHECK_ADAPTER.json_schema(),
             }
         )
 
@@ -163,6 +168,7 @@ def main():
                     "format_instruction": supervisor_parser.get_format_instructions(),
                     "request_schemas": param_schemas,
                     "response_schemas": resp_schemas,
+                    "used_checks": CHECK_ADAPTER.json_schema(),
                 }
             )
             write_resp_to_file(generate_checks_chain_res, "./src/.temp/checks_v2.json")
@@ -172,18 +178,18 @@ def main():
     ##############################################################################
 
     ##############################################################################
-    if not IS_CHAT:
-        with open("./src/.temp/endpoints.json", "r") as file:
-            data = file.read()
-        extracted_endpoints = Endpoints.model_validate_json(data)
-        resp_schemas = []
-        param_schemas = []
-        for i in extracted_endpoints.endpoints:
-            schema = parser.get_path_schema(i)
-            schema.responses = [i for i in schema.responses if 200 <= i.code < 300]
-            resp_schemas.append(schema.model_dump(exclude=("params")))  # type: ignore
-            param_schemas.append(schema.model_dump(exclude=("responses")))  # type: ignore
-        print(param_schemas)
+    # if not IS_CHAT:
+    #     with open("./src/.temp/endpoints.json", "r") as file:
+    #         data = file.read()
+    #     extracted_endpoints = Endpoints.model_validate_json(data)
+    #     resp_schemas = []
+    #     param_schemas = []
+    #     for i in extracted_endpoints.endpoints:
+    #         schema = parser.get_path_schema(i)
+    #         schema.responses = [i for i in schema.responses if 200 <= i.code < 300]
+    #         resp_schemas.append(schema.model_dump(exclude=("params")))  # type: ignore
+    #         param_schemas.append(schema.model_dump(exclude=("responses")))  # type: ignore
+    #     print(param_schemas)
     ##############################################################################
 
     logger.info("END OF CODE")

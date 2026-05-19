@@ -4,7 +4,7 @@
       "step_id": "Activity_1gj3tvy",
       "checks": [
         {
-          "check": { "kind": "http_status_code", "op": "==", "value": 200 },
+          "check": { "kind": "status_code", "op": "==", "value": 200 },
           "failure": {
             "kind": "unexpected_status_code",
             "type": "error",
@@ -13,26 +13,39 @@
         },
         {
           "check": {
-            "kind": "json_path_exists",
-            "path": "$.created.id",
-            "source_arg": null
+            "kind": "object",
+            "path": "$",
+            "min_properties": null,
+            "max_properties": null,
+            "required": ["created"],
+            "properties": {
+              "created": {
+                "kind": "object",
+                "path": "$.created",
+                "min_properties": null,
+                "max_properties": null,
+                "required": ["id", "title"],
+                "properties": {
+                  "id": {
+                    "kind": "type",
+                    "path": "$.created.id",
+                    "type": ["integer"]
+                  },
+                  "title": {
+                    "kind": "type",
+                    "path": "$.created.title",
+                    "type": ["string"]
+                  }
+                },
+                "additional_properties": false
+              }
+            },
+            "additional_properties": false
           },
           "failure": {
             "kind": "missing_response_field",
             "type": "error",
-            "message": "The response must include the 'created.id' field as per the response schema for POST /things."
-          }
-        },
-        {
-          "check": {
-            "kind": "json_path_exists",
-            "path": "$.created.title",
-            "source_arg": null
-          },
-          "failure": {
-            "kind": "missing_response_field",
-            "type": "error",
-            "message": "The response must include the 'created.title' field as per the response schema for POST /things."
+            "message": "The response body for POST /things must contain a 'created' object with 'id' (integer) and 'title' (string) fields."
           }
         }
       ]
@@ -42,46 +55,48 @@
       "checks": [
         {
           "check": {
-            "operation": "and",
+            "kind": "all_of",
             "checks": [
-              { "kind": "http_status_code", "op": ">=", "value": 200 },
-              { "kind": "http_status_code", "op": "<", "value": 300 },
-              { "kind": "http_status_code", "op": "!=", "value": 200 },
-              {
-                "kind": "external_state",
-                "path": null,
-                "source_arg": "created_ids"
-              }
-            ]
+              { "kind": "status_code", "op": "==", "value": 200 },
+              { "kind": "external_step", "arg": "approved" }
+            ],
+            "check": null
           },
           "failure": {
             "kind": "external_state_mismatch",
             "type": "error",
-            "message": "The external state for 'created_ids' must be either 'approved' or 'rejected' before proceeding, and the HTTP status code must be a non-canonical success (2xx but not 200)."
+            "message": "The external moderation step must be in the 'approved' state and the GET /things/{thing_id} response status code must be 200."
           }
         },
         {
           "check": {
-            "kind": "json_path_exists",
-            "path": "$.id",
-            "source_arg": null
+            "kind": "object",
+            "path": "$",
+            "min_properties": null,
+            "max_properties": null,
+            "required": ["id"],
+            "properties": {
+              "id": { "kind": "type", "path": "$.id", "type": ["integer"] }
+            },
+            "additional_properties": false
           },
           "failure": {
             "kind": "missing_response_field",
             "type": "error",
-            "message": "The response must include the 'id' field as per the response schema for GET /things/{thing_id}."
+            "message": "The response body for GET /things/{thing_id} must contain an 'id' (integer) field."
           }
         },
         {
           "check": {
-            "kind": "json_path_equals",
-            "path": "$.id",
-            "source_arg": "thing_id"
+            "kind": "compare_fields",
+            "left_path": "$.id",
+            "op": "==",
+            "right_path": "$.bundle.created_ids"
           },
           "failure": {
             "kind": "id_mismatch",
             "type": "error",
-            "message": "The 'id' in the response must match the 'thing_id' provided in the request path."
+            "message": "The 'id' in the GET /things/{thing_id} response must match the 'created_ids' from the bundle."
           }
         }
       ]
@@ -90,29 +105,42 @@
       "step_id": "Activity_15jwrwn",
       "checks": [
         {
-          "check": {
-            "operation": "and",
-            "checks": [
-              { "kind": "http_status_code", "op": ">=", "value": 200 },
-              { "kind": "http_status_code", "op": "<", "value": 300 }
-            ]
-          },
+          "check": { "kind": "status_code", "op": "==", "value": 200 },
           "failure": {
-            "kind": "non_canonical_status_code",
-            "type": "warning",
-            "message": "The response status code for DELETE /things/{thing_id} must be a 2xx success code, but 200 is non-canonical for DELETE (204 is preferred)."
+            "kind": "unexpected_status_code",
+            "type": "error",
+            "message": "The response status code for DELETE /things/{thing_id} must be 200."
           }
         },
         {
           "check": {
-            "kind": "json_path_exists",
-            "path": "$.id",
-            "source_arg": null
+            "kind": "object",
+            "path": "$",
+            "min_properties": null,
+            "max_properties": null,
+            "required": ["id"],
+            "properties": {
+              "id": { "kind": "type", "path": "$.id", "type": ["integer"] }
+            },
+            "additional_properties": false
           },
           "failure": {
             "kind": "missing_response_field",
             "type": "error",
-            "message": "The response must include the 'id' field as per the response schema for DELETE /things/{thing_id}."
+            "message": "The response body for DELETE /things/{thing_id} must contain an 'id' (integer) field."
+          }
+        },
+        {
+          "check": {
+            "kind": "compare_fields",
+            "left_path": "$.id",
+            "op": "==",
+            "right_path": "$.bundle.created_ids"
+          },
+          "failure": {
+            "kind": "id_mismatch",
+            "type": "error",
+            "message": "The 'id' in the DELETE /things/{thing_id} response must match the 'created_ids' from the bundle."
           }
         }
       ]
@@ -121,11 +149,18 @@
       "step_id": "Activity_1gvfds5",
       "checks": [
         {
-          "check": { "kind": "http_status_code", "op": "==", "value": 404 },
+          "check": {
+            "kind": "all_of",
+            "checks": [
+              { "kind": "status_code", "op": ">=", "value": 400 },
+              { "kind": "status_code", "op": "<", "value": 500 }
+            ],
+            "check": null
+          },
           "failure": {
             "kind": "unexpected_status_code",
             "type": "error",
-            "message": "The response status code for DELETE /things/{thing_id} on a previously deleted resource must be 404."
+            "message": "The response status code for the second DELETE /things/{thing_id} must indicate a client error (4xx)."
           }
         }
       ]

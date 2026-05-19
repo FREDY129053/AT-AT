@@ -1,37 +1,30 @@
 {
-  "score": 2.7,
+  "score": 3.8,
   "comments": [
     {
       "step_id": "Activity_1gj3tvy",
       "remarks": [
-        "The check for `$.created.title` is invalid: the provided response schema for POST /things does not include a `title` field under `created`. Only `id` is defined.",
-        "Missing a `json_path_type` check to validate that `$.created.id` is an integer, as required by the response schema.",
-        "Missing a ComplexCheck to combine the HTTP status code validation with the response field validations for stronger failure isolation."
+        "The response schema for POST /things defines only `created.id` (integer) and `created.title` (string) as required fields, but the generated check enforces `additional_properties: false` on the `created` object. This is overly restrictive unless the schema explicitly prohibits additional fields. Either relax the `additional_properties` constraint or confirm that the schema truly forbids extra fields."
       ]
     },
     {
       "step_id": "Activity_0ck8big",
       "remarks": [
-        "The `external_state` check is incorrectly placed on this step. External state validation must occur on the **next step after the external step** (i.e., `Activity_15jwrwn`), not here.",
-        "The HTTP status code checks in the ComplexCheck are contradictory and nonsensical: `>=200`, `<300`, and `!=200` cannot all be true simultaneously. This renders the entire ComplexCheck useless.",
-        "The failure message for the ComplexCheck is misleading: it claims the status code must be a 'non-canonical success (2xx but not 200)', but the schema only defines 200 as valid for GET /things/{thing_id}.",
-        "Missing a `json_path_type` check to validate that `$.id` is an integer, as required by the response schema."
+        "The `all_of` ComplexCheck correctly combines the HTTP status code and external state validation, but it only checks for the `approved` state. The external step `Activity_1b831bn` allows both `approved` and `rejected` states (as per `allowed_external_states` in the graph). The check should use `one_of` to accept either state, or explicitly document why only `approved` is validated here.",
+        "The failure message for the `all_of` check states that the external step 'must be in the \\'approved\\' state', which is misleading because the process allows `rejected` as well. The message should clarify that this step only proceeds for `approved` (or adjust the check to handle both states)."
       ]
     },
     {
       "step_id": "Activity_15jwrwn",
       "remarks": [
-        "The `external_state` check for the moderation outcome (`approved`/`rejected`) is missing. This step must include a ComplexCheck combining HTTP success with the external state validation from `Activity_1b831bn`.",
-        "The severity for the non-canonical DELETE status code is incorrectly set to `warning`. DELETE returning a 2xx code other than 204 should be a `warning`, but the message incorrectly states that 200 is 'non-canonical' when the schema **only defines 200** as valid. This is a defect in the check logic.",
-        "Missing a `json_path_type` check to validate that `$.id` is an integer, as required by the response schema.",
-        "Missing a `json_path_equals` check to ensure the returned `$.id` matches the `thing_id` from the bundle (as was correctly done in `Activity_0ck8big`)."
+        "The DELETE /things/{thing_id} response schema defines only an `id` field (integer), but the check enforces `additional_properties: false` on the root object. This is overly restrictive unless the schema explicitly prohibits additional fields. Relax this constraint or confirm the schema\u2019s intent."
       ]
     },
     {
       "step_id": "Activity_1gvfds5",
       "remarks": [
-        "The check for HTTP status code 404 is correct, but the failure message is misleading: it states 'on a previously deleted resource', but the process does not guarantee the resource was deleted (the first DELETE could have failed). The message should focus on the expected outcome of the second DELETE attempt.",
-        "Missing a `json_path_exists` check with `negate: true` to explicitly verify that no response body (or no `id` field) is returned for a 404, as the schema does not define a response body for 404."
+        "The check for the second DELETE expects a 4xx status code, which is correct for idempotency validation. However, the failure message could be more specific: it should clarify that a 404 (Not Found) is the *expected* outcome for a successful idempotent DELETE, while other 4xx codes (e.g., 403) might indicate unexpected errors. Consider splitting the check into two cases: one for 404 (success) and another for other 4xx (warning/error).",
+        "The step lacks a check to verify that the response body (if any) does *not* contain the deleted `id` or conflicts with the bundle\u2019s `created_ids`. While the schema does not require this, it would strengthen the validation of idempotency. This is a minor gap but worth noting for completeness."
       ]
     }
   ]

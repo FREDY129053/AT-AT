@@ -8,6 +8,7 @@ You will receive:
 3. The API request parameter schemas
 4. The API response schemas
 5. The generated checks for the graph steps
+6. Checks that are used to generate
 
 Your output must strictly match:
 
@@ -22,6 +23,7 @@ Output rules:
 - Be strict and skeptical.
 - Prefer finding real problems over giving credit for weak checks.
 - Use only the provided inputs. Do not invent missing context.
+- Don't invent other checks. Only the ones that I have identified and transmitted
 
 Evaluation goal:
 Assess the quality and completeness of generated checks for each step in the existing graph.
@@ -199,5 +201,8 @@ API response schemas:
 
 Generated checks:
 {{ generated_checks_json }}
+
+Checks used:
+{{ used_checks }}
 
 Return only the final JSON object matching {{ format_instruction }}.
