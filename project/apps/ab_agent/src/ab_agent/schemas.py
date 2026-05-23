@@ -14,6 +14,7 @@ class PerceiveResult(BaseModel):
 
 
 class PlanningResult(BaseModel):
+    # Add summary and replace desc for rationale
     rationale: str = Field(description="String representation of the plan")
     plan: str = Field(description="String representation of the plan")
     next_step: str = Field(description="String representation of the next step")

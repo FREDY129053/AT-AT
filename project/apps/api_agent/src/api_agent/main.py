@@ -4,11 +4,18 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_mistralai.chat_models import ChatMistralAI
 
+from . import logger
 from .parsing.bpmn_parser import BPMNParser
 from .parsing.schema_parser import SchemaParser
-from .schemas.ir import GenerateChecksResult, IRPrompt, SupervisorAnswer, CHECK_ADAPTER
+from .schemas.ir import (
+    CHECK_ADAPTER,
+    IR,
+    GenerateChecksResult,
+    IRPrompt,
+    Step,
+    SupervisorAnswer,
+)
 from .schemas.openapi import Endpoints
-from . import logger
 
 
 def write_resp_to_file(response, filepath):
@@ -29,8 +36,38 @@ def get_template(filename) -> str:
         return f.read()
 
 
+def build_ir(checks: GenerateChecksResult, ir: IRPrompt) -> IR:
+    steps = []
+    all_checks = checks.process
+    checks_lookup = {item.model_dump().get("step_id"): item for item in all_checks}
+
+    for step in ir.steps:
+        step_id = step.id
+        step_checks = checks_lookup.get(step_id)
+
+        steps.append(
+            Step(
+                step_id=step_id,
+                id=step_id,
+                parent_id=step.parent_id,
+                name=step.name,
+                kind=step.kind,
+                method=step.method,
+                path=step.path,
+                operation_key=step.operation_key,
+                target_bundle=step.target_bundle,
+                extract=step.extract,
+                bundle_args=step.bundle_args,
+                allowed_external_states=step.allowed_external_states,
+                checks=step_checks.checks if step_checks is not None else None,
+            )
+        )
+
+    return IR(machine_name=ir.machine_name, bundles=ir.bundles, steps=steps)
+
+
 def main():
-    IS_CHAT = True
+    IS_CHAT = False
 
     parser = SchemaParser("http://localhost:8000/openapi.json")
     paths = parser.get_all_paths() or []
@@ -76,9 +113,18 @@ def main():
     supervisor_parser = PydanticOutputParser(pydantic_object=SupervisorAnswer)
     ##############################################################################
 
-    # with open("./src/.temp/AAA.txt", 'w') as file:
-    #     t = json.dumps(CHECK_ADAPTER.json_schema(), indent=None)
-    #     file.write(t)
+    with open('./src/.temp/graph.json', 'r') as file:
+        graph_data = json.load(file)
+
+    with open("./src/.temp/checks_v1.json", 'r') as file:
+        checks_data = json.load(file)
+
+    graph = IRPrompt.model_validate(graph_data)
+    checks = GenerateChecksResult.model_validate(checks_data)
+
+    final_ir = build_ir(checks, graph)
+
+    write_resp_to_file(final_ir, "./src/.temp/final_ir.json")
 
     ##############################################################################
     if IS_CHAT:
@@ -144,7 +190,9 @@ def main():
         write_resp_to_file(supervisor_chain_res, "./src/.temp/supervisor_v1.json")
 
         if supervisor_chain_res.score < 4.0:
-            logger.info(f"Regenerate checks. Reviewer score = {supervisor_chain_res.score}")
+            logger.info(
+                f"Regenerate checks. Reviewer score = {supervisor_chain_res.score}"
+            )
             generate_checks_chain_res: GenerateChecksResult = (
                 generate_checks_chain.invoke(
                     {

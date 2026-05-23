@@ -410,9 +410,8 @@ class StepPrompt(BaseModel):
         ],
         default=None,
     )
-    extract: str | None = Field(
+    extract: JsonPath | None = Field(
         description="The path to the key in the request, the value of which needs to be saved in the bundle (for example, the id needs to be saved). **Only if 'target_bundle' is set**",
-        pattern=r"^\$\..+",
         default=None,
     )
     bundle_args: dict[str, str] = Field(
