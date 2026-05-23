@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from jsonpath_ng.ext import parse as jsonpath_parse  # type: ignore
+from schemathesis.core.transport import Response
 
 from .schemas.ir import (
     ArrayCheck,
@@ -185,10 +186,10 @@ def _resolve_path(
     return values
 
 
-def _path_exists(response: Any, path: str) -> bool:
+def _path_exists(payload: Any, path: str) -> bool:
     return (
         _resolve_path(
-            response,
+            payload,
             path,
             allow_missing=True,
         )
@@ -271,7 +272,7 @@ def _compare(left: Any, op: str, right: Any) -> bool:
 def _parse_datetime_like(
     value: str,
     *,
-    response: Any,
+    payload: Any,
     now: datetime,
 ) -> datetime:
     """
@@ -286,7 +287,7 @@ def _parse_datetime_like(
         return now
 
     if value.startswith("$"):
-        resolved = _resolve_path(response, value)
+        resolved = _resolve_path(payload, value)
 
         if not isinstance(resolved, str):
             raise CheckValidationError(
@@ -316,10 +317,11 @@ def _parse_datetime_like(
 # Public API
 # ============================================================
 def validate_check(
-    response: Any,
+    response: Response,
     check: "Check",
     *,
     external_step: Any = None,
+    context: dict,
     now: datetime | None = None,
 ) -> None:
     """
@@ -335,6 +337,7 @@ def validate_check(
         response=response,
         check=check,
         external_step=external_step,
+        context=context,
         now=now,
     )
 
@@ -343,18 +346,21 @@ def validate_check(
 # Main validator
 # ============================================================
 def _validate_check(
-    response: Any,
+    response: Response | Mapping,
     check: Check,
     *,
     external_step: Any = None,
+    context: dict,
     now: datetime,
 ) -> None:
+    payload = response.json() if isinstance(response, Response) else response
+
     match check:
         # ========================================================
         # ExistsCheck
         # ========================================================
         case ExistsCheck():
-            if not _path_exists(response, check.path):
+            if not _path_exists(payload, check.path):
                 raise CheckValidationError(
                     f"Путь {check.path!r} отсутствует.",
                     kind=check.kind,
@@ -367,7 +373,7 @@ def _validate_check(
         # ValueEqualsCheck
         # ========================================================
         case ValueEqualsCheck():
-            actual = _resolve_path(response, check.path, kind=check.kind)
+            actual = _resolve_path(payload, check.path, kind=check.kind)
             expected = check.expected
 
             if (
@@ -394,7 +400,7 @@ def _validate_check(
         # TypeCheck
         # ========================================================
         case TypeCheck():
-            actual = _resolve_path(response, check.path, kind=check.kind)
+            actual = _resolve_path(payload, check.path, kind=check.kind)
             actual_type = _json_type(actual)
 
             if actual_type not in check.type:
@@ -412,7 +418,7 @@ def _validate_check(
         # StringCheck
         # ========================================================
         case StringCheck():
-            actual = _resolve_path(response, check.path, kind=check.kind)
+            actual = _resolve_path(payload, check.path, kind=check.kind)
 
             if not isinstance(actual, str):
                 raise CheckValidationError(
@@ -467,7 +473,7 @@ def _validate_check(
         # NumberCheck
         # ========================================================
         case NumberCheck():
-            actual = _resolve_path(response, check.path, kind=check.kind)
+            actual = _resolve_path(payload, check.path, kind=check.kind)
 
             if not _is_number(actual):
                 raise CheckValidationError(
@@ -571,7 +577,7 @@ def _validate_check(
         # ArrayCheck
         # ========================================================
         case ArrayCheck():
-            actual = _resolve_path(response, check.path, kind=check.kind)
+            actual = _resolve_path(payload, check.path, kind=check.kind)
 
             if not isinstance(actual, Sequence) or isinstance(
                 actual, (str, bytes, bytearray)
@@ -636,6 +642,7 @@ def _validate_check(
                             item,
                             check.contains,
                             external_step=external_step,
+                            context=context,
                             now=now,
                         )
                         found = True
@@ -657,7 +664,7 @@ def _validate_check(
         # ObjectCheck
         # ========================================================
         case ObjectCheck():
-            actual = _resolve_path(response, check.path, kind=check.kind)
+            actual = _resolve_path(payload, check.path, kind=check.kind)
 
             if not isinstance(actual, Mapping):
                 raise CheckValidationError(
@@ -728,9 +735,10 @@ def _validate_check(
 
                     try:
                         _validate_check(
-                            actual[prop_name],
+                            payload,
                             prop_check,
                             external_step=external_step,
+                            context=context,
                             now=now,
                         )
                     except CheckValidationError as exc:
@@ -755,8 +763,8 @@ def _validate_check(
         # FieldCompareCheck
         # =======================================================
         case FieldCompareCheck():
-            left = _resolve_path(response, check.left_path, kind=check.kind)
-            right = _resolve_path(response, check.right_path, kind=check.kind)
+            left = _resolve_path(payload, check.left_path, kind=check.kind)
+            right = _resolve_path(payload, check.right_path, kind=check.kind)
 
             if not _compare(left, check.op, right):
                 raise CheckValidationError(
@@ -773,11 +781,11 @@ def _validate_check(
         # DependencyCheck
         # ========================================================
         case DependencyCheck():
-            if _path_exists(response, check.if_path):
+            if _path_exists(payload, check.if_path):
                 missing = [
                     path
                     for path in check.required_paths
-                    if not _path_exists(response, path)
+                    if not _path_exists(payload, path)
                 ]
 
                 if missing:
@@ -795,7 +803,7 @@ def _validate_check(
         # ExclusiveFieldsCheck
         # ========================================================
         case ExclusiveFieldsCheck():
-            existing = [path for path in check.fields if _path_exists(response, path)]
+            existing = [path for path in check.fields if _path_exists(payload, path)]
 
             if len(existing) > 1:
                 raise CheckValidationError(
@@ -811,7 +819,7 @@ def _validate_check(
         # OneRequiredCheck
         # ========================================================
         case OneRequiredCheck():
-            existing = [path for path in check.fields if _path_exists(response, path)]
+            existing = [path for path in check.fields if _path_exists(payload, path)]
 
             if len(existing) != 1:
                 raise CheckValidationError(
@@ -841,17 +849,11 @@ def _validate_check(
         # StatusCodeCheck
         # ========================================================
         case StatusCodeCheck():
-            if not isinstance(response, Mapping):
-                raise CheckValidationError(
-                    "Для StatusCodeCheck response должен быть Mapping.",
-                    kind=check.kind,
-                )
-
-            status_code = response.get("status_code", MISSING)
+            status_code = getattr(response, "status_code", MISSING)
 
             if status_code is MISSING:
                 raise CheckValidationError(
-                    "В response отсутствует status_code.",
+                    "В payload отсутствует status_code.",
                     kind=check.kind,
                 )
 
@@ -875,6 +877,7 @@ def _validate_check(
                         response,
                         nested,
                         external_step=external_step,
+                        context=context,
                         now=now,
                     )
 
@@ -889,6 +892,7 @@ def _validate_check(
                             response,
                             nested,
                             external_step=external_step,
+                            context=context,
                             now=now,
                         )
                         return
@@ -910,6 +914,7 @@ def _validate_check(
                             response,
                             nested,
                             external_step=external_step,
+                            context=context,
                             now=now,
                         )
                         passed += 1
@@ -933,6 +938,7 @@ def _validate_check(
                         response,
                         check.check,
                         external_step=external_step,
+                        context=context,
                         now=now,
                     )
                 except (CheckValidationError, AssertionError):
@@ -947,7 +953,7 @@ def _validate_check(
         # DateRangeCheck
         # ========================================================
         case DateRangeCheck():
-            actual = _resolve_path(response, check.path, kind=check.kind)
+            actual = _resolve_path(payload, check.path, kind=check.kind)
 
             if not isinstance(actual, str):
                 raise CheckValidationError(
@@ -970,7 +976,7 @@ def _validate_check(
             if check.after is not None:
                 after_dt = _parse_datetime_like(
                     check.after,
-                    response=response,
+                    payload=payload,
                     now=now,
                 )
 
@@ -991,7 +997,7 @@ def _validate_check(
             if check.before is not None:
                 before_dt = _parse_datetime_like(
                     check.before,
-                    response=response,
+                    payload=payload,
                     now=now,
                 )
 
