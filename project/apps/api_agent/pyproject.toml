@@ -7,6 +7,7 @@ authors = [
     { name = "fredy129053", email = "fredy1290534518@gmail.com" }
 ]
 requires-python = ">=3.12"
+# "schemathesis>=4.14.3"
 dependencies = [
     "shared",
     "bpmn-parser>=1.0.16",
@@ -19,6 +20,9 @@ dependencies = [
     "prance>=25.4.8.0",
     "openapi-spec-validator>=0.8.5",
     "jsonpath-ng>=1.8.0",
+    "langgraph>=1.1.10",
+    "ipython>=9.14.0",
+    "grandalf>=0.8",
 ]
 
 [project.scripts]
@@ -31,9 +35,3 @@ build-backend = "uv_build"
 [tool.uv.sources]
 contracts = { path = "../../packages/contracts", editable = true }
 shared = { path = "../../packages/shared", editable = true }
-
-[dependency-groups]
-dev = [
-    "pydantic-2-mermaid>=0.7.3",
-    "pydantic-diagram>=0.1.5",
-]

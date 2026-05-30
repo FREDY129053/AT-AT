@@ -67,7 +67,7 @@ def build_ir(checks: GenerateChecksResult, ir: IRPrompt) -> IR:
 
 
 def main():
-    IS_CHAT = False
+    IS_CHAT = True
 
     parser = SchemaParser("http://localhost:8000/openapi.json")
     paths = parser.get_all_paths() or []
@@ -142,6 +142,7 @@ def main():
                 "format_instructions": endpoints_parser.get_format_instructions(),
             }
         )
+        
         resp_schemas = []
         param_schemas = []
         for i in extract_endpoints_chain_res.endpoints:
