@@ -9,4 +9,5 @@ def ingest_node(input: ApiTesterInput) -> ApiTesterState:
         run_id=run_id,
         docs_url=input.docs_url,
         files=input.files,
+        config=input.config,
     )

@@ -6,6 +6,7 @@ from .temp2prompt import (
     get_template,
 )
 from .write_temp_file import write_resp_to_file
+from .read_json2model import json2model
 
 __all__ = [
     "BASE_DIR",
@@ -15,4 +16,6 @@ __all__ = [
     "get_template",
     ########################
     "write_resp_to_file",
+    ########################
+    "json2model",
 ]

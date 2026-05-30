@@ -4,6 +4,7 @@ Use the IR as the source of truth.
 Use the BPMN JSON only as secondary context when the IR is ambiguous.
 Use the API request parameter schemas and response schemas as the only source of truth for all field-level checks.
 If remarks are provided, treat them as corrective feedback from a prior review and incorporate them strictly.
+Use the Supported checks as possible checks.
 Do not contradict the IR.
 Do not invent checks, field paths, parameters, response properties, or corrections that are not supported by the inputs.
 
@@ -20,6 +21,9 @@ API request parameter schemas:
 
 API response schemas:
 {{ response_schemas }}
+
+Supported checks:
+{{ supported_checks }}
 
 Optional reviewer remarks:
 {{ remarks_json }}

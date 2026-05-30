@@ -14,12 +14,8 @@ def call_cop(state: ApiTesterState):
     subgraph_state = CoPState(
         schema_parser=state.custom_schema_parser,
         processes=state.processes,
-        responses_schemas=[],
-        params_schemas=[],
-        generated_graph=None,
-        generated_checks=None,
-        score=0,
-        remarks=[],
+        max_gen_iters=1,
+        is_chat=state.config['is_chat']
     )
 
     subgraph.invoke(subgraph_state)
@@ -40,10 +36,13 @@ builder.add_edge("cop", END)
 
 graph = builder.compile()
 
+
 graph.invoke(
     ApiTesterInput(
         docs_url="http://localhost:8000/openapi.json",
         files="/home/fredy129053/Documents/DIPLOM/schemathis_test/agent/double_delete.bpmn",
-        config={},
+        config={
+            "is_chat": False,
+        },
     )
 )

@@ -1,8 +1,9 @@
-from api_agent.schemas import CoPState, SupervisorAnswer, CHECK_ADAPTER
-from api_agent.services.utils import BASE_DIR, get_prompt_from_file, write_resp_to_file
+from api_agent import logger
+from api_agent.schemas import CHECK_ADAPTER, CoPState, SupervisorAnswer
+from api_agent.services.utils import BASE_DIR, get_prompt_from_file, write_resp_to_file, json2model
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_mistralai import ChatMistralAI
-from api_agent import logger
+
 
 def supervisor_node(state: CoPState) -> dict:
     logger.info("START supervisor...")
@@ -20,7 +21,8 @@ def supervisor_node(state: CoPState) -> dict:
     assert state.generated_graph is not None
     assert state.generated_checks is not None
 
-    supervisor_chain_res: SupervisorAnswer = supervisor_chain.invoke(
+    if state.is_chat:
+        supervisor_chain_res: SupervisorAnswer = supervisor_chain.invoke(
             {
                 "business_process_json": state.processes,
                 "graph_json": state.generated_graph.model_dump_json(),
@@ -31,7 +33,12 @@ def supervisor_node(state: CoPState) -> dict:
                 "used_checks": CHECK_ADAPTER.json_schema(),
             }
         )
+        write_resp_to_file(supervisor_chain_res, "[GRAPH]_supervisor.json")
+    else:
+        supervisor_chain_res = json2model("[GRAPH]_supervisor.json", SupervisorAnswer)
 
-    write_resp_to_file(supervisor_chain_res, "[GRAPH]_supervisor.json")
     logger.info("END supervisor...")
-    return {"score": supervisor_chain_res.score, "remarks": supervisor_chain_res.comments}
+    return {
+        "score": supervisor_chain_res.score,
+        "remarks": supervisor_chain_res.comments,
+    }

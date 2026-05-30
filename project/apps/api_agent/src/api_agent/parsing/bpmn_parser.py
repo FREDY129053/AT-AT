@@ -117,4 +117,5 @@ class BPMNParser:
         return {"processes": processes}
     
     def get_json_bpmn(self, *, indent: int | None = None):
-        return json.dumps(self.parse_bpmn(), ensure_ascii=False, indent=indent)
+        # WARN: 1 процесс идет только
+        return json.dumps(self.parse_bpmn()['processes'][0], ensure_ascii=False, indent=indent)

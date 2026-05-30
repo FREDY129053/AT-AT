@@ -1,6 +1,6 @@
 from api_agent import logger
 from api_agent.schemas import CoPState, Endpoints
-from api_agent.services.utils import BASE_DIR, get_prompt_from_file, write_resp_to_file
+from api_agent.services.utils import BASE_DIR, get_prompt_from_file, write_resp_to_file, json2model
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_mistralai import ChatMistralAI
 
@@ -22,14 +22,18 @@ def extract_endpoints_node(state: CoPState) -> dict:
     paths = parser.get_all_paths() or []
 
     extract_endpoints_chain = extract_endpoints_prompt | llm | endpoints_parser
-    
-    extract_endpoints_chain_res: Endpoints = extract_endpoints_chain.invoke(
-        {
-            "business_process": state.processes,  # TODO: n процессов
-            "api_endpoints": [path.model_dump() for path in paths],
-            "format_instructions": endpoints_parser.get_format_instructions(),
-        }
-    )
+
+    if state.is_chat:
+        extract_endpoints_chain_res: Endpoints = extract_endpoints_chain.invoke(
+            {
+                "business_process": state.processes,  # TODO: n процессов
+                "api_endpoints": [path.model_dump() for path in paths],
+                "format_instructions": endpoints_parser.get_format_instructions(),
+            }
+        )
+        write_resp_to_file(extract_endpoints_chain_res, "[GRAPH]_extracted_endpoints.json")
+    else:
+        extract_endpoints_chain_res = json2model("[GRAPH]_extracted_endpoints.json", Endpoints)
 
     resp_schemas = []
     param_schemas = []
@@ -40,5 +44,5 @@ def extract_endpoints_node(state: CoPState) -> dict:
         param_schemas.append(schema.model_dump(exclude=("responses")))  # type: ignore
 
     logger.info("END extracting endpoints")
-    write_resp_to_file(extract_endpoints_chain_res, "[GRAPH]_extracted_endpoints.json")
+    
     return {"responses_schemas": resp_schemas, "params_schemas": param_schemas}
