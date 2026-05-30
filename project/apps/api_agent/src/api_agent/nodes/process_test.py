@@ -1,12 +1,10 @@
-from api_agent.schemas import CoPState, GenerateChecksResult, IRPrompt, IR, Step
-from api_agent.services.test_runner import validate_check
-
+from api_agent.schemas import CoPState, GenerateChecksResult, IRPrompt, IR, Step, Report, BusinessError
+from api_agent.services.test_runner import run_path
 from hypothesis import HealthCheck, Verbosity, given, settings
 from hypothesis import strategies as st
-from hypothesis.strategies import DataObject
-from schemathesis.generation import GenerationMode
-from schemathesis.generation.case import Case
 from schemathesis.specs.openapi.schemas import OpenApiSchema
+
+
 
 def _build_ir(checks: GenerateChecksResult, ir: IRPrompt) -> IR:
     steps = []
@@ -37,31 +35,7 @@ def _build_ir(checks: GenerateChecksResult, ir: IRPrompt) -> IR:
 
     return IR(machine_name=ir.machine_name, bundles=ir.bundles, steps=steps)
 
-def _build_test(ir: IR, data: DataObject, schema: OpenApiSchema):
-    for step in ir.steps:
-        if step.kind == 'external':
-            continue
-        
-        get_step = step
-        method = get_step.method
-        path = get_step.path
-        assert method is not None and path is not None
-        if path[-1] != "}":
-            path += "/"
-        operation = schema[path][method]  # type: ignore
-        case: Case = data.draw(
-            operation.as_strategy(generation_mode=GenerationMode.POSITIVE),
-            label=f"case:{get_step.id}",
-        )
-        response = case.call()
-        assert get_step.checks is not None
-        for check in get_step.checks:
-            try:
-                validate_check(response, check.check, context={}, external_step='approved')
-            except Exception as e:
-                print(e)
-
-def _run_test(ir: IR, schema: OpenApiSchema):
+def _run_test(ir: IR, schema: OpenApiSchema, report: Report):
     @settings(
         database=None,
         # max_examples=1,
@@ -72,7 +46,7 @@ def _run_test(ir: IR, schema: OpenApiSchema):
     )
     @given(data=st.data())
     def test(data):
-        _build_test(ir, data, schema)
+        run_path(schema, ir.steps, data, report)
     return test
 
 def process_test_node(state: CoPState) -> dict:
@@ -81,8 +55,15 @@ def process_test_node(state: CoPState) -> dict:
 
     generated_ir = _build_ir(state.generated_checks, state.generated_graph)
 
+    report = Report()
+
     assert state.schema_parser.schema is not None
-    runner = _run_test(generated_ir, state.schema_parser.schema)
+    runner = _run_test(generated_ir, state.schema_parser.schema, report)
     runner()
+
+    for i in report.issues:
+        if i.type == "process":
+            b = BusinessError(issue=i)
+            print(b, end="\n+++++++++++++++++++++++++++++++++++\n")
 
     return {}

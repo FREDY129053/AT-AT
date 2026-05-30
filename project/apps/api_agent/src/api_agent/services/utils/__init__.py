@@ -7,6 +7,7 @@ from .temp2prompt import (
 )
 from .write_temp_file import write_resp_to_file
 from .read_json2model import json2model
+from .validate_check import validate_check, _resolve_path as resolve_json_path, CheckValidationError
 
 __all__ = [
     "BASE_DIR",
@@ -18,4 +19,8 @@ __all__ = [
     "write_resp_to_file",
     ########################
     "json2model",
+    ########################
+    "validate_check",
+    "resolve_json_path",
+    "CheckValidationError"
 ]

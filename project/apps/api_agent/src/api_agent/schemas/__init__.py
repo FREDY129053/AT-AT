@@ -33,6 +33,7 @@ from .ir import (
     ValueEqualsCheck,
 )
 from .openapi import Endpoint, Endpoints, PathInfo, PathSchema, ResponseInfo
+from .process_test import ProcessIssue, Report, TraceStep, BusinessError
 from .state import ApiTesterInput, ApiTesterState, CoPState
 
 __all__ = [
@@ -79,4 +80,9 @@ __all__ = [
     "ApiTesterState",
     "ApiTesterInput",
     "CoPState",
+    #######################
+    "Report",
+    "TraceStep",
+    "ProcessIssue",
+    "BusinessError",
 ]
