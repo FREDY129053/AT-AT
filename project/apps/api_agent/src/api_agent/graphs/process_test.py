@@ -5,6 +5,7 @@ from api_agent.nodes.supervisor import supervisor_node
 from api_agent.nodes.process_test import process_test_node
 from api_agent.schemas import CoPState
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 from api_agent import logger
 
 
@@ -20,7 +21,7 @@ def __decide_loop(state: CoPState) -> str:
     return "regenerate"
 
 
-def processes_test_graph():
+def processes_test_graph() -> CompiledStateGraph:
     cop_graph = StateGraph(CoPState)
     cop_graph.add_node("extract_endpoints", extract_endpoints_node)
     cop_graph.add_node("generate_graph", generate_graph_node)

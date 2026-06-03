@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 import secrets
-from typing import Iterable
+from typing import Iterable, Callable
 
 from api_agent.schemas import Result
-from schemathesis.cli.commands.run.context import ExecutionContext
-from schemathesis.cli.commands.run.handlers.output import OutputHandler
-from schemathesis.cli.executor import execute_event_loop
 from schemathesis.cli.loaders import into_event_stream
-from schemathesis.config import HealthCheck, ProjectConfig, SchemathesisConfig
-from schemathesis.generation import GenerationMode
-from schemathesis.generation.metrics import response_time
+from schemathesis.config import HealthCheck, SchemathesisConfig
 from schemathesis.engine import events, from_schema
+from schemathesis.generation import GenerationMode
 
 ALL_PHASES = ("examples", "coverage", "fuzzing", "stateful")
 
@@ -21,8 +17,11 @@ def run_schemathesis(
     seed: int | None = None,
     max_examples: int = 100,
     phases: Iterable[str] | None = None,
+    on_event: Callable[[dict], None],
 ) -> Result:
     actual_seed = seed if seed is not None else secrets.randbits(64)
+
+    # on_event({"stage": "generate_seed", "seed": actual_seed})
 
     config: SchemathesisConfig = SchemathesisConfig()
     config.update(
@@ -80,6 +79,7 @@ def run_schemathesis(
         filter_set=filter_set,  # no filters: test everything
     )
 
+    total = 0
 
     for event in stream:
         result.events.append(event)
@@ -90,6 +90,9 @@ def run_schemathesis(
         if isinstance(event, events.ScenarioFinished):
             result.scenario_finished.append(event)
             result.statistic.on_scenario_finished(event.recorder)
+            total += len(event.recorder.cases)
+            # on_event({"stage": "finished_scenario", "total_cases": total})
+            print(f"Total cases = {total}")
 
         elif isinstance(event, events.PhaseFinished):
             result.phase_finished.append(event)
@@ -102,5 +105,6 @@ def run_schemathesis(
 
         elif isinstance(event, events.EngineFinished):
             result.engine_finished = event
+            print("GG")
 
     return result
