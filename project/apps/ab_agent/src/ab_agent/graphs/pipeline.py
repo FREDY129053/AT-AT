@@ -16,7 +16,10 @@ from ab_agent.nodes import (
 )
 from ab_agent.schemas import AgentState
 from ab_agent.services.memory_service import MemoryService
+from shared.rabbitmq import Context, create_event_bus
 from langgraph.graph import END, START, StateGraph
+
+DEBUG = True
 
 async def full_perceive(state: AgentState):
     mems = await state.memory.get_all_items()
@@ -29,7 +32,7 @@ async def full_perceive(state: AgentState):
         await perceive_node(state)
     return "plan"
 
-fast_loop_builder = StateGraph(state_schema=AgentState)
+fast_loop_builder = StateGraph(state_schema=AgentState, context_schema=Context)
 fast_loop_builder.add_node("observe", observe_node)
 fast_loop_builder.add_node("perceive", perceive_node)
 fast_loop_builder.add_node("plan", plan_node)
@@ -135,25 +138,34 @@ async def main():
     await env.setup(task_to_use, True)
     logger.info("Env loaded!")
 
+    event_bus = create_event_bus()
+    await event_bus.broker.start()
+
     state = AgentState(
+        is_debug=DEBUG,
         agent_id=agent_id,
         persona = "Background:\nThey are non-binary, between the ages of 25 and 34. They have an associate degree and live in Portland, Oregon, with a partner and a small rescue dog. They work part-time as a freelance graphic designer and supplement their income with gig-economy delivery work. They enjoy thrifting, photography, and attending local music shows. They follow sustainable living practices, are politically engaged, and view technology skeptically but appreciate tools that support creativity and community connection.\n\nFinancial Situation:\nTheir income is variable and sometimes unpredictable, so they prioritize building an emergency fund and tracking monthly expenses. They budget carefully for essentials and allocate a modest portion of earnings to savings and creative projects. They are open to affordable credit options but avoid high-interest debt.\n\nShopping Habits:\nThey shop online a few times per week, frequently browsing marketplaces and independent maker sites. Average monthly online spend is around $120–$200, with purchases including vintage clothing, art supplies, tech accessories, and eco-friendly household goods. They value ethical brands, transparent sourcing, and products with minimal packaging. They read reviews but also rely on community recommendations from social platforms. They enjoy discovering new small brands and are comfortable returning items that don't meet expectations.\n\nProfessional Life:\nTheir freelance design work is flexible and project-based; they juggle client deadlines with personal creative work. They cultivate a portfolio online and use networking at local events to find clients. They are motivated to grow into a sustainable creative practice and are exploring part-time remote roles to increase income stability.\n\nPersonal Style:\nThey have an eclectic, gender-neutral aesthetic that mixes thrifted finds with modern basics. Their routine includes morning coffee and a short photo walk, work sessions split between a home studio and local co-working spaces, and evenings spent editing photos, making zines, or attending shows. They prioritize mental health with regular therapy and community meetups.",
         intent = intent,
         environment=env,
         llm=llm,
         memory=MemoryService(agent_id),
+        max_steps=2,
     )
 
     async def run_slow_loop():
         while True:
             await slow_loop_graph.ainvoke(state)
 
-    slow_task = asyncio.create_task(run_slow_loop())
+    if not state.is_debug:
+        slow_task = asyncio.create_task(run_slow_loop())
 
     try:
-        await fast_loop_graph.ainvoke(state)
+        ctx = Context(agent_id, event_bus)
+        await fast_loop_graph.ainvoke(state, context=ctx)
     finally:
-        slow_task.cancel()
+        if not state.is_debug:
+            slow_task.cancel() # type: ignore
+        await event_bus.broker.stop()
 
 if __name__ == "__main__":
     asyncio.run(main())

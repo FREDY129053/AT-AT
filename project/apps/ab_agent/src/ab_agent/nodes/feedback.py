@@ -48,17 +48,20 @@ async def feedback_node(state: AgentState) -> dict:
         template_format="jinja2",
     )
 
-    result = await structured_call(
-        state.llm,
-        chat_prompt,
-        ActionFeedbackResult,
-        {
-            "persona": state.persona,
-            "raw_action": last_action.raw_action,
-            "content": last_plan.content,
-            "obs": obs,
-        }
-    )
+    if state.is_debug:
+        result = ActionFeedbackResult.model_validate({"thoughts": ["DEBUG FEEDBACK"]})
+    else:
+        result = await structured_call(
+            state.llm,
+            chat_prompt,
+            ActionFeedbackResult,
+            {
+                "persona": state.persona,
+                "raw_action": last_action.raw_action,
+                "content": last_plan.content,
+                "obs": obs,
+            }
+        )
 
     for thought in result.thoughts:
         await state.memory.add(Thought(thought))

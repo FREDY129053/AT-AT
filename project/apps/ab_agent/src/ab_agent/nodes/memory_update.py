@@ -19,6 +19,10 @@ async def memory_update_node(state: AgentState) -> dict:
         [("system", memory_prompt.template), ("user", item["content"])]
     )
 
+    # Все равно на память в DEBUG
+    if state.is_debug:
+        return {}
+    
     res = await structured_call(state.llm, chat_prompt, MemoryImportanceResult, {})
 
     importance = float(getattr(res, "score", 0.0))

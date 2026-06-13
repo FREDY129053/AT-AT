@@ -38,6 +38,9 @@ async def wonder_node(state: AgentState) -> dict:
         template_format="jinja2",
     )
 
+    if state.is_debug:
+        return {}
+
     result = await structured_call(
         state.llm,
         chat_prompt,

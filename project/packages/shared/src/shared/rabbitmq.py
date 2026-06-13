@@ -1,5 +1,5 @@
-import asyncio
 from dataclasses import dataclass
+from typing import Literal
 
 from faststream.rabbit import RabbitBroker
 
@@ -10,14 +10,11 @@ class EventBus:
         self.broker = broker
 
     async def emit(
-        self, run_id: str, node: str, event_type: str, payload: dict, seq: int
+        self, workspace_type: Literal['ab', 'api'], payload: dict
     ):
         await self.broker.publish(
             {
-                "run_id": run_id,
-                "node": node,
-                "seq": seq,
-                "type": event_type,
+                "workspace_type": workspace_type,
                 "payload": payload,
             },
             queue="workflow_events",
@@ -32,4 +29,4 @@ def create_event_bus(rabbit_url: str = "amqp://guest:guest@localhost:5672") -> E
 class Context:
     run_id: str
     event_bus: EventBus
-    seq: int = 0
+    # seq: int = 0

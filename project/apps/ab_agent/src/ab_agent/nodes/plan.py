@@ -39,22 +39,29 @@ async def plan_node(state: AgentState) -> dict:
             template_format="jinja2",
         )
 
-        result = await structured_call(
-            state.llm,
-            chat_prompt,
-            PlanningResult,
-            {
-                "persona": state.persona,
-                "intent": state.intent,
-                "memories": memories,
-                "current_timestamp": int(time.time()),
-                "old_plan": (
-                    "N/A"
-                    if state.current_plan is None
-                    else state.current_plan.content
-                ),
-            }
-        )
+        if state.is_debug:
+            result = PlanningResult.model_validate_json("""{
+                "rationale": "DEBUG",
+                "plan": "DEBUG",
+                "next_step": "DEBUG"
+            }""")
+        else:
+            result = await structured_call(
+                state.llm,
+                chat_prompt,
+                PlanningResult,
+                {
+                    "persona": state.persona,
+                    "intent": state.intent,
+                    "memories": memories,
+                    "current_timestamp": int(time.time()),
+                    "old_plan": (
+                        "N/A"
+                        if state.current_plan is None
+                        else state.current_plan.content
+                    ),
+                }
+            )
 
         if getattr(result, "plan", None) and getattr(result, "next_step", None):
             plan = result.plan

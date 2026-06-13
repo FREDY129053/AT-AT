@@ -18,10 +18,10 @@ async def act_node(state: AgentState) -> dict:
     )
     memories = format_memories(memories)
     env = state.observation or {}
-    clickables = [e for e in env["clickable_elements"] if e is not None]
-    inputs = [e for e in env["input_elements"] if e is not None]
-    selects = [e for e in env["select_elements"] if e is not None]
-    hovers = [e for e in env["hoverable_elements"] if e is not None]
+    clickables = [e for e in env.get("clickable_elements", []) if e is not None]
+    inputs = [e for e in env.get("input_elements", []) if e is not None]
+    selects = [e for e in env.get("select_elements", []) if e is not None]
+    hovers = [e for e in env.get("hoverable_elements", []) if e is not None]
 
     parser = PydanticOutputParser(pydantic_object=GenerateActionResult)
     user_template = """
@@ -56,23 +56,26 @@ async def act_node(state: AgentState) -> dict:
         template_format="jinja2",
     )
 
-    result = await structured_call(
-        state.llm,
-        chat_prompt,
-        GenerateActionResult,
-        {
-            "inputs": inputs,
-            "clickables": clickables,
-            "selects": selects,
-            "hovers": hovers,
-            "persona": state.persona,
-            "intent": state.intent,
-            "plan": state.current_plan.content,
-            "next_step": state.current_plan.next_step,
-            "environment": env["html"],
-            "recent_memories": memories,
-        }
-    )
+    if state.is_debug:
+        result = GenerateActionResult.model_validate({"actions": [{'action': 'click', 'target': 'search_ctrl_k', 'description': "DEBUG CLICK"}]})
+    else:
+        result = await structured_call(
+            state.llm,
+            chat_prompt,
+            GenerateActionResult,
+            {
+                "inputs": inputs,
+                "clickables": clickables,
+                "selects": selects,
+                "hovers": hovers,
+                "persona": state.persona,
+                "intent": state.intent,
+                "plan": state.current_plan.content,
+                "next_step": state.current_plan.next_step,
+                "environment": env["html"],
+                "recent_memories": memories,
+            }
+        )
 
     # for action in result.actions:
     #     action_to_mem = Action(action["description"], json.dumps(action))

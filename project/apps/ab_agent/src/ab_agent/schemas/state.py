@@ -11,6 +11,8 @@ from ab_agent.services.memory_service import MemoryService
 
 
 class AgentState(BaseModel):
+    is_debug: bool = False
+
     agent_id: str
 
     persona: str
@@ -35,6 +37,7 @@ class AgentState(BaseModel):
 
     terminated: bool = Field(default=False)
 
+    max_steps: int = Field(default=25)
     step_count: int = Field(default=0)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

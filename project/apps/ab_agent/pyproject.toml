@@ -9,6 +9,8 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "shared",
+    "contracts",
+
     "jinja2>=3.1.6",
     "langchain>=1.2.15",
     "langchain-community>=0.4.1",

@@ -7,7 +7,9 @@ authors = [
     { name = "fredy129053", email = "fredy1290534518@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic>=2.13.4",
+]
 
 [build-system]
 requires = ["hatchling"]

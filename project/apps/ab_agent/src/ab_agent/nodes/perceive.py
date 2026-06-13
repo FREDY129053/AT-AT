@@ -25,14 +25,17 @@ async def perceive_node(state: AgentState) -> dict:
         template_format="jinja2",
     )
 
-    result = await structured_call(
-        state.llm,
-        chat_prompt,
-        PerceiveResult,
-        {
-            "env_full": full_page,
-        }
-    )
+    if state.is_debug:
+        result = PerceiveResult.model_validate({"observations": ["DEBUG OBSERVE"]})
+    else:
+        result = await structured_call(
+            state.llm,
+            chat_prompt,
+            PerceiveResult,
+            {
+                "env_full": full_page,
+            }
+        )
 
     await state.memory.add(Observation(content=result.observations[0], original=env))
 
