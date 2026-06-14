@@ -1,5 +1,5 @@
 import time
-from pathlib import Path
+from importlib.resources import files
 
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 
@@ -8,10 +8,11 @@ from ab_agent.schemas import AgentState, Reflection, ReflectResult
 from ab_agent.services.llm_service import structured_call
 from ab_agent.services.memory import format_memories
 
+pkg = files('ab_agent')
 
 async def reflect_node(state: AgentState) -> dict:
     reflect_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/reflect.j2").read_text(), template_format="jinja2"
+        (pkg / 'prompts' / "reflect.j2").read_text(), template_format="jinja2"
     )
 
     all_memories = await state.memory.get_all_items()

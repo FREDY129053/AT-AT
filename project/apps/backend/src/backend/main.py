@@ -1,36 +1,54 @@
-import asyncio
-from faststream import FastStream
-from faststream.rabbit import RabbitBroker
-from collections import defaultdict
-from contracts.ab_rabbit import AgentEventContract
-from backend.ab_metrics import ABMetricsCalculator
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.broker import broker
+
+# ВАЖНО:
+# просто импортируем файлы чтобы зарегистрировались subscriber'ы
+import backend.consumers
+import backend.event_consumer
+
+from backend.routes.event_stream import router as event_router
+from backend.routes.tasks import router as tasks_router
 
 
-broker = RabbitBroker("amqp://guest:guest@localhost:5672")
-
-AGENTS = 1
-
-# Данные об агентах по группам
-ab_agents_data: defaultdict[str, list[AgentEventContract]] = defaultdict(list)
-
-@broker.subscriber("workflow_events")
-async def base_handler(body: dict):
-    if body.get('workspace_type') == 'ab':
-        agent_event = AgentEventContract.model_validate(body.get('payload'))
-        agent_event.agent_group = 'A'
-        agent_event2 = agent_event.model_copy()
-        agent_event2.agent_group = 'B'
-        ab_agents_data[agent_event.agent_group].append(agent_event)
-        ab_agents_data[agent_event2.agent_group].append(agent_event2)
-
-    calc = ABMetricsCalculator(ab_agents_data)
-    report = calc.analyze()
-    print(report.summary)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Connecting RabbitMQ...")
+    await broker.start()
+    print("RabbitMQ connected")
+    yield
+    print("Stopping RabbitMQ...")
+    await broker.stop()
 
 
-async def main():
-    app = FastStream(broker)
-    await app.run()  # blocking method
+app = FastAPI(
+    title="Agent Testing Platform",
+    lifespan=lifespan,
+)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # потом заменить
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(
+    event_router,
+    prefix="/api"
+)
+app.include_router(
+    tasks_router,
+    prefix="/api"
+)
+
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "ok"
+    }

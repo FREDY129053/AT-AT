@@ -1,6 +1,7 @@
 import json
 import time
 import uuid
+from importlib.resources import files, as_file
 from pathlib import Path
 from typing import Optional
 
@@ -20,32 +21,37 @@ from .schemas import (
     WonderResult,
 )
 
+pkg = files('ab_agent')
+prompts_dir = pkg / 'prompts'
+with as_file(prompts_dir) as p:
+    PROMPTS_DIR = Path(p)
+
 
 class Agent:
     id: str
     persona: str
     memory: Memory
     current_plan: Optional[Plan] = None
-    jinja_env = Environment(loader=FileSystemLoader("./src/ab_agent/prompts/"))
+    jinja_env = Environment(loader=FileSystemLoader(searchpath=str(PROMPTS_DIR)))
 
     perceive_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/perceive_page.j2").read_text(), template_format="jinja2"
+        (pkg / 'prompts' / 'perceive_page.j2').read_text(), template_format="jinja2"
     )
     reflect_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/reflect.j2").read_text(), template_format="jinja2"
+        (pkg / 'prompts' / 'reflect.j2').read_text(), template_format="jinja2"
     )
     wonder_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/wonder.j2").read_text(), template_format="jinja2"
+        (pkg / 'prompts' / 'wonder.j2').read_text(), template_format="jinja2"
     )
     planning_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/planning.j2").read_text(), template_format="jinja2"
+        (pkg / 'prompts' / 'planning.j2').read_text(), template_format="jinja2"
     )
     action_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/generate_action.j2").read_text(),
+        (pkg / 'prompts' / 'generate_action.j2').read_text(),
         template_format="jinja2",
     )
     feedback_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/action_feedback.j2").read_text(),
+        (pkg / 'prompts' / 'action_feedback.j2').read_text(),
         template_format="jinja2",
     )
 

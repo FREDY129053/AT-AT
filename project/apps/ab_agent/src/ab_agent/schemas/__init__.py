@@ -15,7 +15,7 @@ from .memory import (
     Reflection,
     Thought,
 )
-from .state import AgentState
+from .state import AgentState, AgentInput, GlobalState
 
 __all__ = [
     #########################
@@ -35,4 +35,6 @@ __all__ = [
     "Thought",
     #########################
     "AgentState",
+    "AgentInput",
+    "GlobalState"
 ]

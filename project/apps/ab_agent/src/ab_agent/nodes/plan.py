@@ -1,5 +1,5 @@
 import time
-from pathlib import Path
+from importlib.resources import files
 
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 
@@ -8,12 +8,13 @@ from ab_agent.schemas import AgentState, Plan, PlanningResult, Thought
 from ab_agent.services.llm_service import structured_call
 from ab_agent.services.memory import format_memories
 
+pkg = files('ab_agent')
 
 async def plan_node(state: AgentState) -> dict:
     logger.info("Agent planning...")
 
     planning_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/planning.j2").read_text(), template_format="jinja2"
+        (pkg / 'prompts' / "planning.j2").read_text(), template_format="jinja2"
     )
 
     memories = await state.memory.retrieve(state.intent, 20)

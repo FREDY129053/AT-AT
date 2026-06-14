@@ -2,7 +2,7 @@ import asyncio
 import time
 import uuid
 
-from pathlib import Path
+from importlib.resources import files
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
@@ -12,6 +12,7 @@ from langgraph.store.memory import InMemoryStore
 
 from .schemas import MemoryImportanceResult
 
+pkg = files('ab_agent')
 
 class MemoryItem:
     def __init__(self, content, timestamp=int(time.time())):
@@ -71,7 +72,7 @@ hf_embeddings = HuggingFaceEndpointEmbeddings(
 
 
 class Memory:
-    memory_prompt = PromptTemplate.from_template(Path("./src/ab_agent/prompts/memory_importance.j2").read_text(errors="NO FILE"), template_format="jinja2")
+    memory_prompt = PromptTemplate.from_template((pkg / 'prompts' / "memory_importance.j2").read_text(), template_format="jinja2")
     json_parser = JsonOutputParser(pydantic_object=MemoryImportanceResult)
 
     def __init__(self, agent_id):

@@ -1,4 +1,4 @@
-from pathlib import Path
+from importlib.resources import files
 
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 
@@ -7,10 +7,11 @@ from ab_agent.schemas import AgentState, Thought, WonderResult
 from ab_agent.services.llm_service import structured_call
 from ab_agent.services.memory import format_memories
 
+pkg = files('ab_agent')
 
 async def wonder_node(state: AgentState) -> dict:
     wonder_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/wonder.j2").read_text(), template_format="jinja2"
+        (pkg / 'prompts' / "wonder.j2").read_text(), template_format="jinja2"
     )   
 
     memories = await state.memory.get_all_items()

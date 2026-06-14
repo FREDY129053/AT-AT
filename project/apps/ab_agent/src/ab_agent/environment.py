@@ -4,12 +4,14 @@ import contextlib
 import random
 from datetime import datetime
 from pathlib import Path
+from importlib.resources import files, as_file
 from uuid import uuid4
 
 from playwright.async_api import BrowserContext, Page, Playwright, async_playwright
 
 from . import logger, ms_delta, rabbit_temp
 
+pkg = files('ab_agent')
 
 class WebAgentEnv:
     _shared_playwright: Playwright | None = None
@@ -73,7 +75,11 @@ class WebAgentEnv:
         self.context.set_default_navigation_timeout(0)
 
         # Init js scripts
-        init_script_path = Path("./src/ab_agent/js/initscript.js")
+        init_script_path = (pkg / 'js' /'initscript.js')
+
+        with as_file(init_script_path) as p:
+            init_script_path = Path(p)
+
         if init_script_path.exists():
             await self.context.add_init_script(init_script_path.read_text())
         else:
@@ -100,7 +106,7 @@ class WebAgentEnv:
         """Get parsed page content using the parser script"""
         assert self.page is not None
 
-        parser_script = Path("./src/ab_agent/js/parser.js")
+        parser_script = pkg / 'js' /'parser.js'
         content = {}
 
         try:
@@ -117,6 +123,9 @@ class WebAgentEnv:
             await self.__wait_for_custom_networkidle(timeout_ms=20_000)
         except Exception as e:
             logger.error(e)
+
+        with as_file(parser_script) as p:
+            parser_script = Path(p)
 
         if parser_script.exists():
             parser_code = parser_script.read_text()

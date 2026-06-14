@@ -1,29 +1,29 @@
-export type TestingMode = 'api' | 'ab';
+export type TestingMode = "api" | "ab";
 
-export type LocalModelType = 'ollama' | 'llama';
+export type LocalModelType = "ollama" | "llama";
 
 export type OnlineProvider =
-  | 'OpenAI'
-  | 'Anthropic'
-  | 'GoogleGenerativeAI'
-  | 'AzureChatOpenAI'
-  | 'Groq'
-  | 'HuggingFace'
-  | 'XAI'
-  | 'NVIDIA'
-  | 'Cohere'
-  | 'MistralAI'
-  | 'Together'
-  | 'DeepSeek'
-  | 'Databricks'
-  | 'Qwen'
-  | 'GigaChat'
-  | 'YandexGPT'
-  | 'OpenRouter'
-  | 'LiteLLM';
+  | "OpenAI"
+  | "Anthropic"
+  | "GoogleGenerativeAI"
+  | "AzureChatOpenAI"
+  | "Groq"
+  | "HuggingFace"
+  | "XAI"
+  | "NVIDIA"
+  | "Cohere"
+  | "MistralAI"
+  | "Together"
+  | "DeepSeek"
+  | "Databricks"
+  | "Qwen"
+  | "GigaChat"
+  | "YandexGPT"
+  | "OpenRouter"
+  | "LiteLLM";
 
 export interface LLMConfig {
-  type: 'local' | 'online';
+  type: "local" | "online";
 
   // Для локальных моделей
   localType?: LocalModelType;
@@ -55,7 +55,14 @@ export interface ApiTestConfig {
   outputFormats: string[];
 }
 
-export type GroupType = 'children' | 'teenagers' | 'adults' | 'elderly';
+export type GroupType =
+  | "teen_student"
+  | "poor_worker"
+  | "young_professional"
+  | "middle_class_parent"
+  | "retired"
+  | "college_student"
+  | "unemployed";
 
 export interface TestGroup {
   id: string;
@@ -76,7 +83,7 @@ export interface AbTestConfig {
 export interface TestResult {
   id: string;
   timestamp: Date;
-  status: 'running' | 'completed' | 'failed';
+  status: "running" | "completed" | "failed";
   progress: number;
   downloadUrl?: string;
 }

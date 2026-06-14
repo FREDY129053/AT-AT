@@ -1,5 +1,5 @@
 import json
-from pathlib import Path
+from importlib.resources import files
 
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 
@@ -7,10 +7,11 @@ from ab_agent import logger
 from ab_agent.schemas import AgentState, Observation, PerceiveResult
 from ab_agent.services.llm_service import structured_call
 
+pkg = files('ab_agent')
 
 async def perceive_node(state: AgentState) -> dict:
     perceive_prompt = PromptTemplate.from_template(
-        Path("./src/ab_agent/prompts/perceive_page.j2").read_text(), template_format="jinja2"
+        (pkg / 'prompts' / "perceive_page.j2").read_text(), template_format="jinja2"
     )
 
     env = state.observation.get("html", {}) if state.observation is not None else {}

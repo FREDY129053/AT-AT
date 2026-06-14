@@ -1,23 +1,42 @@
-import { useState } from 'react';
-import { Play, Download, Loader2, CheckCircle2 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Checkbox } from './ui/checkbox';
-import { Progress } from './ui/progress';
-import { Badge } from './ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { TestGroup, GroupType } from '../types';
+import { useState } from "react";
+import { Play, Download, Loader2, CheckCircle2 } from "lucide-react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Checkbox } from "./ui/checkbox";
+import { Progress } from "./ui/progress";
+import { Badge } from "./ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { TestGroup, GroupType } from "../types";
+import { useAppStore } from "../store";
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+const COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+  "#f97316",
+];
 
 const GROUP_TYPES: { value: GroupType; label: string }[] = [
-  { value: 'children', label: 'Дети' },
-  { value: 'teenagers', label: 'Подростки' },
-  { value: 'adults', label: 'Взрослые' },
-  { value: 'elderly', label: 'Старики' },
+  { value: "teen_student", label: "Школьники" },
+  { value: "poor_worker", label: "Малоимущие" },
+  { value: "young_professional", label: "Молодые специалисты" },
+  { value: "middle_class_parent", label: "Семейные" },
+  { value: "retired", label: "Пенсионеры" },
+  { value: "college_student", label: "Студенты" },
+  { value: "unemployed", label: "Безработные" },
 ];
 
 function toEven(n: number): number {
@@ -26,26 +45,35 @@ function toEven(n: number): number {
 }
 
 export function AbTesting() {
-  const [interfaceA, setInterfaceA] = useState('');
-  const [interfaceB, setInterfaceB] = useState('');
-  const [targetAction, setTargetAction] = useState('');
+  const [interfaceA, setInterfaceA] = useState("");
+  const [interfaceB, setInterfaceB] = useState("");
+  const [targetAction, setTargetAction] = useState("");
   const [groups, setGroups] = useState<TestGroup[]>([
-    { id: '1', name: 'Group A', count: 10, color: COLORS[0] },
-    { id: '2', name: 'Group B', count: 10, color: COLORS[1] },
-    { id: '3', name: 'Group C', count: 10, color: COLORS[2] },
-    { id: '4', name: 'Group D', count: 10, color: COLORS[3] },
+    { id: "1", name: "Group A", count: 10, color: COLORS[0] },
+    { id: "2", name: "Group B", count: 10, color: COLORS[1] },
+    { id: "3", name: "Group C", count: 10, color: COLORS[2] },
+    { id: "4", name: "Group D", count: 10, color: COLORS[3] },
   ]);
-  const [selectedGroups, setSelectedGroups] = useState<string[]>(['1', '2', '3', '4']);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([
+    "1",
+    "2",
+    "3",
+    "4",
+  ]);
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [testResults, setTestResults] = useState<any>(null);
   const [intermediateResults, setIntermediateResults] = useState<any>(null);
 
+  const currentWorkspace = useAppStore((state) =>
+    state.workspaces.find((w) => w.id === state.activeWorkspaceId),
+  );
+
   const handleGroupToggle = (groupId: string) => {
     setSelectedGroups((prev) =>
       prev.includes(groupId)
         ? prev.filter((id) => id !== groupId)
-        : [...prev, groupId]
+        : [...prev, groupId],
     );
   };
 
@@ -54,7 +82,7 @@ export function AbTesting() {
     if (isNaN(parsed)) return;
     const even = toEven(parsed);
     setGroups((prev) =>
-      prev.map((g) => (g.id === groupId ? { ...g, count: even } : g))
+      prev.map((g) => (g.id === groupId ? { ...g, count: even } : g)),
     );
   };
 
@@ -63,19 +91,19 @@ export function AbTesting() {
     const parsed = parseInt(raw);
     if (isNaN(parsed)) {
       setGroups((prev) =>
-        prev.map((g) => (g.id === groupId ? { ...g, count: 2 } : g))
+        prev.map((g) => (g.id === groupId ? { ...g, count: 2 } : g)),
       );
       return;
     }
     const even = toEven(parsed);
     setGroups((prev) =>
-      prev.map((g) => (g.id === groupId ? { ...g, count: even } : g))
+      prev.map((g) => (g.id === groupId ? { ...g, count: even } : g)),
     );
   };
 
   const handleGroupTypeChange = (groupId: string, type: GroupType) => {
     setGroups((prev) =>
-      prev.map((g) => (g.id === groupId ? { ...g, type } : g))
+      prev.map((g) => (g.id === groupId ? { ...g, type } : g)),
     );
   };
 
@@ -83,7 +111,9 @@ export function AbTesting() {
     const usedTypes = groups
       .filter((g) => g.id !== currentGroupId && g.type)
       .map((g) => g.type as GroupType);
-    return GROUP_TYPES.map((t) => t.value).filter((type) => !usedTypes.includes(type));
+    return GROUP_TYPES.map((t) => t.value).filter(
+      (type) => !usedTypes.includes(type),
+    );
   };
 
   const handleAddGroup = () => {
@@ -118,7 +148,43 @@ export function AbTesting() {
   }));
 
   const handleRunTests = async () => {
-    if (!interfaceA || !interfaceB || !targetAction || activeGroups.length === 0) return;
+    if (
+      !interfaceA ||
+      !interfaceB ||
+      !targetAction ||
+      activeGroups.length === 0
+    )
+      return;
+
+    const taskId = currentWorkspace!.name;
+
+    // const eventSource = new EventSource(
+    //   `http://localhost:8000/api/events/${taskId}`,
+    // );
+
+    // eventSource.addEventListener("update", (event) => {
+    //   console.log("RAW:", event.data); // покажет строку без парсинга
+    //   const parsed = JSON.parse(event.data);
+    //   console.log("Parsed:", parsed);
+    // });
+
+    await fetch("http://localhost:8000/api/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        task_id: taskId,
+        test_type: "ui",
+        payload: {
+          interface_a: interfaceA,
+          interface_b: interfaceB,
+          intent: targetAction,
+          groups: activeGroups,
+          llm: currentWorkspace!.llmConfig,
+        },
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
     setIsRunning(true);
     setProgress(0);
@@ -132,29 +198,36 @@ export function AbTesting() {
         if (next > 20 && next < 100) {
           setIntermediateResults({
             interfaceA: {
-              sessions: Math.round((next / 100) * 1250),
-              conversions: Math.round((next / 100) * 345),
-              avgTime: '2m 34s',
-              bounceRate: 32.5,
+              activeAgents: Math.round((next / 100) * 1250),
+              tokens: Math.round((next / 100) * 345),
+              time: "2m 34s",
             },
             interfaceB: {
-              sessions: Math.round((next / 100) * 1280),
-              conversions: Math.round((next / 100) * 398),
-              avgTime: '3m 12s',
-              bounceRate: 28.3,
+              activeAgents: Math.round((next / 100) * 1280),
+              tokens: Math.round((next / 100) * 398),
+              time: "3m 12s",
             },
           });
         }
 
         if (next >= 100) {
+          // eventSource.close()
           clearInterval(interval);
           setIsRunning(false);
           setTestResults({
-            interfaceA: { sessions: 1250, conversions: 345, conversionRate: 27.6, avgTime: '2m 34s', bounceRate: 32.5 },
-            interfaceB: { sessions: 1280, conversions: 398, conversionRate: 31.1, avgTime: '3m 12s', bounceRate: 28.3 },
-            winner: 'B',
+            interfaceA: {
+              activeAgents: 1250,
+              tokens: 345,
+              time: "2m 34s",
+            },
+            interfaceB: {
+              activeAgents: 1280,
+              tokens: 398,
+              time: "3m 12s",
+            },
+            winner: "B",
             confidence: 94.2,
-            duration: '4h 23m',
+            duration: "4h 23m",
             timestamp: new Date().toISOString(),
           });
           return 100;
@@ -165,9 +238,11 @@ export function AbTesting() {
   };
 
   const handleDownload = () => {
-    const blob = new Blob(['Mock A/B test results data'], { type: 'application/zip' });
+    const blob = new Blob(["Mock A/B test results data"], {
+      type: "application/zip",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `ab-test-results-${Date.now()}.zip`;
     document.body.appendChild(a);
@@ -234,7 +309,11 @@ export function AbTesting() {
                     Итого: {totalCount} чел.
                   </Badge>
                   {groups.length < GROUP_TYPES.length && (
-                    <Button variant="outline" size="sm" onClick={handleAddGroup}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddGroup}
+                    >
                       Add Group
                     </Button>
                   )}
@@ -273,12 +352,18 @@ export function AbTesting() {
                             min="2"
                             step="2"
                             value={group.count}
-                            onChange={(e) => handleCountChange(group.id, e.target.value)}
-                            onBlur={(e) => handleCountBlur(group.id, e.target.value)}
+                            onChange={(e) =>
+                              handleCountChange(group.id, e.target.value)
+                            }
+                            onBlur={(e) =>
+                              handleCountBlur(group.id, e.target.value)
+                            }
                             disabled={!isActive}
                             className="w-24 text-center"
                           />
-                          <span className="text-sm text-zinc-500 w-8">чел.</span>
+                          <span className="text-sm text-zinc-500 w-8">
+                            чел.
+                          </span>
                           {groups.length > 1 && (
                             <Button
                               variant="ghost"
@@ -295,8 +380,13 @@ export function AbTesting() {
                             Тип группы:
                           </Label>
                           <Select
-                            value={group.type || ''}
-                            onValueChange={(value) => handleGroupTypeChange(group.id, value as GroupType)}
+                            value={group.type || ""}
+                            onValueChange={(value) =>
+                              handleGroupTypeChange(
+                                group.id,
+                                value as GroupType,
+                              )
+                            }
                             disabled={!isActive}
                           >
                             <SelectTrigger className="w-40">
@@ -314,7 +404,7 @@ export function AbTesting() {
                                     disabled={!isAvailable}
                                   >
                                     {typeOption.label}
-                                    {!isAvailable && ' (уже используется)'}
+                                    {!isAvailable && " (уже используется)"}
                                   </SelectItem>
                                 );
                               })}
@@ -346,9 +436,14 @@ export function AbTesting() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(value: number, _name: string, props: any) =>
-                              [`${value}% (${props.payload.count} чел.)`, props.payload.name]
-                            }
+                            formatter={(
+                              value: number,
+                              _name: string,
+                              props: any,
+                            ) => [
+                              `${value}% (${props.payload.count} чел.)`,
+                              props.payload.name,
+                            ]}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -414,14 +509,26 @@ export function AbTesting() {
                     Interface A
                   </div>
                   <div className="space-y-2 text-sm">
-                    {(['sessions', 'conversions', 'avgTime', 'bounceRate'] as const).map((key) => (
-                      <div key={key} className="flex justify-between p-2 bg-blue-50 rounded">
-                        <span className="capitalize">{key === 'avgTime' ? 'Avg. Time' : key === 'bounceRate' ? 'Bounce Rate' : key}</span>
-                        <span className="font-semibold">
-                          {intermediateResults.interfaceA[key]}{key === 'bounceRate' ? '%' : ''}
-                        </span>
-                      </div>
-                    ))}
+                    {(["activeAgents", "tokens", "time"] as const).map(
+                      (key) => (
+                        <div
+                          key={key}
+                          className="flex justify-between p-2 bg-blue-50 rounded"
+                        >
+                          <span className="capitalize">
+                            {key === "time"
+                              ? "Time"
+                              : key === "activeAgents"
+                                ? "Active Agents"
+                                : key}
+                          </span>
+                          <span className="font-semibold">
+                            {intermediateResults.interfaceA[key]}
+                            {/* {key === "bounceRate" ? "%" : ""} */}
+                          </span>
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -430,14 +537,26 @@ export function AbTesting() {
                     Interface B
                   </div>
                   <div className="space-y-2 text-sm">
-                    {(['sessions', 'conversions', 'avgTime', 'bounceRate'] as const).map((key) => (
-                      <div key={key} className="flex justify-between p-2 bg-green-50 rounded">
-                        <span className="capitalize">{key === 'avgTime' ? 'Avg. Time' : key === 'bounceRate' ? 'Bounce Rate' : key}</span>
-                        <span className="font-semibold">
-                          {intermediateResults.interfaceB[key]}{key === 'bounceRate' ? '%' : ''}
-                        </span>
-                      </div>
-                    ))}
+                    {(["activeAgents", "tokens", "time"] as const).map(
+                      (key) => (
+                        <div
+                          key={key}
+                          className="flex justify-between p-2 bg-green-50 rounded"
+                        >
+                          <span className="capitalize">
+                            {key === "time"
+                              ? "Time"
+                              : key === "activeAgents"
+                                ? "Active Agents"
+                                : key}
+                          </span>
+                          <span className="font-semibold">
+                            {intermediateResults.interfaceB[key]}
+                            {/* {key === "bounceRate" ? "%" : ""} */}
+                          </span>
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
               </div>
@@ -468,29 +587,62 @@ export function AbTesting() {
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="border rounded-lg p-4 space-y-3">
-                  <div className="font-semibold text-lg text-blue-600">Interface A</div>
+                  <div className="font-semibold text-lg text-blue-600">
+                    Interface A
+                  </div>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span>Sessions</span><span className="font-semibold">{testResults.interfaceA.sessions}</span></div>
-                    <div className="flex justify-between"><span>Conversions</span><span className="font-semibold">{testResults.interfaceA.conversions}</span></div>
-                    <div className="flex justify-between"><span>Conversion Rate</span><span className="font-semibold text-blue-600">{testResults.interfaceA.conversionRate}%</span></div>
-                    <div className="flex justify-between"><span>Avg. Time</span><span className="font-semibold">{testResults.interfaceA.avgTime}</span></div>
-                    <div className="flex justify-between"><span>Bounce Rate</span><span className="font-semibold">{testResults.interfaceA.bounceRate}%</span></div>
+                    <div className="flex justify-between">
+                      <span>Active Agents</span>
+                      <span className="font-semibold">
+                        {testResults.interfaceA.activeAgents}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Tokens</span>
+                      <span className="font-semibold">
+                        {testResults.interfaceA.tokens}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Time</span>
+                      <span className="font-semibold">
+                        {testResults.interfaceA.time}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="border-2 border-green-200 bg-green-50 rounded-lg p-4 space-y-3">
-                  <div className="font-semibold text-lg text-green-600">Interface B</div>
+                  <div className="font-semibold text-lg text-green-600">
+                    Interface B
+                  </div>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span>Sessions</span><span className="font-semibold">{testResults.interfaceB.sessions}</span></div>
-                    <div className="flex justify-between"><span>Conversions</span><span className="font-semibold">{testResults.interfaceB.conversions}</span></div>
-                    <div className="flex justify-between"><span>Conversion Rate</span><span className="font-semibold text-green-600">{testResults.interfaceB.conversionRate}%</span></div>
-                    <div className="flex justify-between"><span>Avg. Time</span><span className="font-semibold">{testResults.interfaceB.avgTime}</span></div>
-                    <div className="flex justify-between"><span>Bounce Rate</span><span className="font-semibold">{testResults.interfaceB.bounceRate}%</span></div>
+                    <div className="flex justify-between">
+                      <span>Active Agents</span>
+                      <span className="font-semibold">
+                        {testResults.interfaceB.activeAgents}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Tokens</span>
+                      <span className="font-semibold">
+                        {testResults.interfaceB.tokens}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Time</span>
+                      <span className="font-semibold">
+                        {testResults.interfaceB.time}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
               <div className="flex items-center justify-between text-sm text-zinc-600 p-4 bg-zinc-50 rounded-lg">
                 <div>Duration: {testResults.duration}</div>
-                <div>Completed at: {new Date(testResults.timestamp).toLocaleTimeString()}</div>
+                <div>
+                  Completed at:{" "}
+                  {new Date(testResults.timestamp).toLocaleTimeString()}
+                </div>
               </div>
               <Button onClick={handleDownload} className="w-full" size="lg">
                 <Download className="w-4 h-4 mr-2" />
