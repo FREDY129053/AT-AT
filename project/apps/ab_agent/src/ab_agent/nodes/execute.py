@@ -14,9 +14,9 @@ async def execute_node(state: AgentState, runtime: Runtime[Context]) -> dict:
     action = str(state.selected_action)
     action_type = state.selected_action.get("action", "") if state.selected_action is not None else ""
 
-    terminate = ""
+    terminate = "progress"
     if action_type == "terminate":
-        terminate = state.selected_action.get("type", "") if state.selected_action is not None else ""
+        terminate = state.selected_action.get("type", "progress") if state.selected_action is not None else "progress"
 
     if steps >= max_steps:
         terminate = "error"
@@ -30,6 +30,8 @@ async def execute_node(state: AgentState, runtime: Runtime[Context]) -> dict:
         curr_step=steps,
         max_steps=max_steps,
         terminate=terminate,
+        back=True if action_type == 'back' else False,
+        refresh_count=1 if action_type == 'refresh' else 0,
         obs_hash_prev=get_str_hash(state.observation_text or ""),
         obs_hash_curr=get_str_hash(str(obs)),
         step=steps

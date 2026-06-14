@@ -7,7 +7,9 @@ class AgentEventContract(BaseModel):
     agent_type: str = ""
     curr_step: int
     max_steps: int
-    terminate: Literal['error', 'success', '']  # DEBUG: ''
+    refresh_count: int = 0
+    back: bool = False
+    terminate: Literal['error', 'success', 'progress']
     obs_hash_prev: str
     obs_hash_curr: str
     step: int
