@@ -87,8 +87,9 @@ async def handle_request(msg: dict):
     test_type = msg["test_type"]
 
     if test_type == "api":
+        # run API pipeline with full payload so api_agent can use provided inputs
         asyncio.create_task(
-            run_api_test(task_id)
+            run_api_test(msg.get('payload', {}), task_id)
         )
 
     elif test_type == "ui":

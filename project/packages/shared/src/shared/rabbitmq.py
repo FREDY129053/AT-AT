@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Literal
 
 from faststream.rabbit import RabbitBroker
 
@@ -21,24 +20,56 @@ class EventBus:
         # optional process id associated with this EventBus (for per-process subgraph runs)
         self.process_id: str | None = None
 
-    async def emit(
-        self, workspace_type: Literal['ab', 'api'], payload: dict
-    ):
-        body: dict = {
-            "workspace_type": workspace_type,
-            "payload": payload,
-        }
-        # attach task/run id if this EventBus instance has it
-        if self.run_id:
+    async def emit(self, *args, **kwargs):
+        """Flexible emit API.
+
+        Supports two calling styles for backward compatibility:
+        1) emit(workspace_type: 'ab'|'api', payload: dict)
+        2) emit(run_id=..., node=..., event_type=..., payload=..., seq=...)
+
+        The resulting message published to the `workflow_events` queue will include
+        at least payload and, when available, task_id (run id) and process_id.
+        """
+        body: dict = {}
+
+        # Style 1: (workspace_type, payload)
+        if len(args) >= 2 and isinstance(args[0], str) and isinstance(args[1], dict):
+            workspace_type = args[0]
+            payload = args[1]
+            body["workspace_type"] = workspace_type
+            body["payload"] = payload
+        else:
+            # Style 2: detailed event fields in kwargs
+            # Accept either 'run_id' or use bound self.run_id
+            run_id = kwargs.get("run_id") or self.run_id
+            node = kwargs.get("node")
+            event_type = kwargs.get("event_type") or kwargs.get("type")
+            payload = kwargs.get("payload") or {}
+            seq = kwargs.get("seq")
+
+            # canonical body
+            body["payload"] = payload
+            if node:
+                body["node"] = node
+            if event_type:
+                body["event_type"] = event_type
+            if seq is not None:
+                body["seq"] = seq
+
+            # workspace_type is optional; set to 'api' by default when using detailed API
+            body.setdefault("workspace_type", "api")
+
+            # attach task/run id if present
+            if run_id:
+                body["task_id"] = run_id
+
+        # attach EventBus-level run/process ids if not already present
+        if "task_id" not in body and self.run_id:
             body["task_id"] = self.run_id
-        # attach process id if present
-        if self.process_id:
+        if "process_id" not in body and self.process_id:
             body["process_id"] = self.process_id
 
-        await self.broker.publish(
-            body,
-            queue="workflow_events",
-        )
+        await self.broker.publish(body, queue="workflow_events")
 
 
 def create_event_bus(rabbit_url: str = "amqp://guest:guest@localhost:5672", process_id: str | None = None) -> EventBus:

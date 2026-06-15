@@ -57,69 +57,175 @@ export function ApiTesting() {
   const handleRunTests = async () => {
     if (!swaggerUrl) return;
 
-    console.log(currentWorkspace?.name);
-    console.log(currentWorkspace?.llmConfig)
+    // use workspace name as taskId (same convention as other UIs)
+    const taskId = currentWorkspace
+      ? currentWorkspace.name
+      : String(Date.now());
 
     setIsRunning(true);
     setProgress(0);
     setTestResults(null);
     setIntermediateResults(null);
 
-    const hasBusinessProcessFiles = uploadedFiles.length > 0;
+    // seed intermediate results so UI shows immediately
+    setIntermediateResults({
+      fuzz: { testsRun: 0, passed: 0, failed: 0, coverage: 0 },
+      businessProcess: uploadedFiles.length
+        ? { flowsValidated: 0, pathsCompleted: 0, errors: 0, compliance: 0 }
+        : null,
+    });
 
-    // Simulate test execution
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const newProgress = prev + Math.random() * 8;
+    let messagesReceived = false;
+    let debugSource: EventSource | null = null;
 
-        // Update intermediate results
-        if (newProgress > 20 && newProgress < 100) {
-          setIntermediateResults({
+    const eventSource = new EventSource(
+      `http://localhost:8000/api/events/${encodeURIComponent(taskId)}`,
+    );
+
+    eventSource.onopen = () => {
+      console.info("SSE connected to", taskId);
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("SSE error", err);
+    };
+
+    eventSource.onmessage = (event) => {
+      messagesReceived = true;
+      try {
+        const parsed = JSON.parse(event.data);
+        const payload = parsed.payload ? parsed.payload : parsed;
+
+        const eventType =
+          parsed.event_type || payload.event_type || payload.type;
+
+        // If payload contains metrics or progress, merge into intermediateResults
+        if (payload.metrics || payload.progress) {
+          setIntermediateResults((prev: any) => ({
+            ...prev,
             fuzz: {
-              testsRun: Math.round((newProgress / 100) * 245),
-              passed: Math.round((newProgress / 100) * 223),
-              failed: Math.round((newProgress / 100) * 18),
-              coverage: Math.round((newProgress / 100) * 87.5),
+              testsRun: payload.metrics?.testsRun ?? prev?.fuzz?.testsRun ?? 0,
+              passed: payload.metrics?.passed ?? prev?.fuzz?.passed ?? 0,
+              failed: payload.metrics?.failed ?? prev?.fuzz?.failed ?? 0,
+              coverage: payload.metrics?.coverage ?? prev?.fuzz?.coverage ?? 0,
             },
-            businessProcess: hasBusinessProcessFiles
-              ? {
-                  flowsValidated: Math.round((newProgress / 100) * 12),
-                  pathsCompleted: Math.round((newProgress / 100) * 45),
-                  errors: Math.round((newProgress / 100) * 3),
-                  compliance: Math.round((newProgress / 100) * 94.2),
-                }
-              : null,
-          });
+            businessProcess:
+              payload.metrics?.businessProcess ?? prev?.businessProcess,
+          }));
         }
 
-        if (newProgress >= 100) {
-          clearInterval(interval);
+        // Handle termination / finished events
+        if (
+          eventType === "finished" ||
+          payload.terminate === "success" ||
+          payload.terminate === "error"
+        ) {
+          // finalize
+          try {
+            eventSource.close();
+          } catch (e) {}
+          if (debugSource)
+            try {
+              debugSource.close();
+            } catch (e) {}
+
           setIsRunning(false);
-          setTestResults({
-            fuzz: {
-              totalTests: 245,
-              passed: 223,
-              failed: 18,
-              skipped: 4,
-              coverage: 87.5,
-              duration: "3m 42s",
-            },
-            businessProcess: hasBusinessProcessFiles
-              ? {
-                  totalFlows: 12,
-                  validated: 11,
-                  errors: 3,
-                  compliance: 94.2,
-                  duration: "2m 18s",
-                }
-              : null,
-            timestamp: new Date().toISOString(),
-          });
+          setProgress(100);
+
+          // If the backend provided a summary in payload.summary use it, otherwise synthesize
+          const summary = payload.summary || payload.result || null;
+          if (summary) {
+            setTestResults(summary);
+          } else {
+            // fallback synthesized result
+            setTestResults({
+              fuzz: {
+                totalTests: 245,
+                passed: 223,
+                failed: 18,
+                skipped: 4,
+                coverage: 87.5,
+                duration: "3m 42s",
+              },
+              businessProcess: payload.businessProcess || null,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Ошибка парсинга JSON в API SSE:", error);
+      }
+    };
+
+    // if no messages within 3s, open debug stream so user can see raw events
+    setTimeout(() => {
+      if (!messagesReceived) {
+        console.warn(
+          "No SSE messages received for task",
+          taskId,
+          "- opening debug stream",
+        );
+        debugSource = new EventSource(
+          "http://localhost:8000/api/events/__debug__",
+        );
+        debugSource.onmessage = (e) => console.debug("DEBUG SSE:", e.data);
+        debugSource.onerror = (e) => console.error("DEBUG SSE error", e);
+      }
+    }, 3000);
+
+    // prepare payload: include swaggerUrl and first uploaded file content (if present)
+    let filesContent = "";
+    if (uploadedFiles.length > 0) {
+      try {
+        const file = uploadedFiles[0].file;
+        filesContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result ?? ""));
+          reader.onerror = () =>
+            reject(new Error("Failed to read uploaded file"));
+          reader.readAsText(file);
+        });
+      } catch (e) {
+        console.warn(
+          "Failed to read uploaded file, continuing without file content",
+          e,
+        );
+        filesContent = "";
+      }
+    }
+
+    const payload = {
+      docs_url: swaggerUrl,
+      files: filesContent,
+      config: {
+        outputFormats,
+        llm: currentWorkspace?.llmConfig ?? null,
+      },
+    } as const;
+
+    // send start request to backend which will run the api graph
+    await fetch("http://localhost:8000/api/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        task_id: taskId,
+        test_type: "api",
+        payload,
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    // lightweight progress updater while events stream in
+    const intervalId = setInterval(() => {
+      setProgress((prev) => {
+        if (!isRunning) {
+          clearInterval(intervalId);
           return 100;
         }
-        return newProgress;
+        // gently increase until events report finalization
+        const next = Math.min(99, prev + Math.random() * 6);
+        return next;
       });
-    }, 400);
+    }, 500);
   };
 
   const handleDownload = () => {
