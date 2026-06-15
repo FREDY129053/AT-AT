@@ -64,8 +64,12 @@ export function AbTesting() {
   const [progress, setProgress] = useState(0);
   const [testResults, setTestResults] = useState<any>(null);
   const [intermediateResults, setIntermediateResults] = useState<any>(null);
-  // const [activeAgentsA, setActiveAgentsA] = useState(0);
-  // const [activeAgentsB, setActiveAgentsB] = useState(0);
+  const [activeAgentsA, setActiveAgentsA] = useState(0);
+  const [activeAgentsB, setActiveAgentsB] = useState(0);
+  const [groupFinishTimes, setGroupFinishTimes] = useState<{
+    A?: number;
+    B?: number;
+  }>({});
 
   const currentWorkspace = useAppStore((state) =>
     state.workspaces.find((w) => w.id === state.activeWorkspaceId),
@@ -158,26 +162,164 @@ export function AbTesting() {
     )
       return;
 
-    // const taskId = currentWorkspace!.name;
-    const taskId = "99";
+    // use workspace name as taskId
+    const taskId = currentWorkspace
+      ? currentWorkspace.name
+      : String(Date.now());
+
+    // initialize active agents per variant and UI state immediately so cards render
+    const total = totalCount;
+    const half = Math.floor(total / 2);
+    setActiveAgentsA(half);
+    setActiveAgentsB(total - half);
+    setGroupFinishTimes({});
+    setIsRunning(true);
+    setProgress(0);
+    setTestResults(null);
+
+    // seed intermediate results so UI shows immediately
+    setIntermediateResults({
+      interfaceA: { activeAgents: half, tokens: 0, time: "0m 0s" },
+      interfaceB: { activeAgents: total - half, tokens: 0, time: "0m 0s" },
+    });
+
+    const startTs = Date.now();
+
+    let messagesReceived = false;
+    let debugSource: EventSource | null = null;
 
     const eventSource = new EventSource(
-      `http://localhost:8000/api/events/${taskId}`,
+      `http://localhost:8000/api/events/${encodeURIComponent(taskId)}`,
     );
 
-    let activeAgentsA = totalCount / 2;
-    let activeAgentsB = totalCount / 2;
+    eventSource.onopen = () => {
+      console.info("SSE connected to", taskId);
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("SSE error", err);
+    };
 
     eventSource.onmessage = (event) => {
-      console.log("RAW:", event.data); // покажет строку без парсинга
-      
+      messagesReceived = true;
+      console.debug("SSE message:", event.data);
+
       try {
         const parsed = JSON.parse(event.data);
-        console.log("Parsed:", parsed);
+        const payload = parsed.payload ? parsed.payload : parsed;
+
+        const terminate = payload.terminate;
+        const agentGroup =
+          payload.agent_group ||
+          payload.agentGroup ||
+          payload.agentGroupId ||
+          payload.agentGroup;
+
+        // update displayed active agent counters
+        if (terminate === "error" || terminate === "success") {
+          if (agentGroup === "A") {
+            setActiveAgentsA((prev) => {
+              const next = Math.max(0, prev - 1);
+              if (next === 0 && !groupFinishTimes.A) {
+                setGroupFinishTimes((g) => ({ ...g, A: Date.now() - startTs }));
+              }
+              return next;
+            });
+          } else if (agentGroup === "B") {
+            setActiveAgentsB((prev) => {
+              const next = Math.max(0, prev - 1);
+              if (next === 0 && !groupFinishTimes.B) {
+                setGroupFinishTimes((g) => ({ ...g, B: Date.now() - startTs }));
+              }
+              return next;
+            });
+          }
+        }
+
+        // deterministically compute intermediate snapshot based on previous snapshot
+        setIntermediateResults((prev: any) => {
+          const prevA = prev?.interfaceA?.activeAgents ?? half;
+          const prevB = prev?.interfaceB?.activeAgents ?? total - half;
+          let nextA = prevA;
+          let nextB = prevB;
+          if (terminate === "error" || terminate === "success") {
+            if (agentGroup === "A") nextA = Math.max(0, prevA - 1);
+            if (agentGroup === "B") nextB = Math.max(0, prevB - 1);
+          }
+
+          const done = total - (nextA + nextB);
+          const tokensA = Math.round((done / Math.max(1, total)) * 345);
+          const tokensB = Math.round((done / Math.max(1, total)) * 398);
+
+          return {
+            interfaceA: {
+              activeAgents: nextA,
+              tokens: tokensA,
+              time: prev?.interfaceA?.time || "0m 0s",
+            },
+            interfaceB: {
+              activeAgents: nextB,
+              tokens: tokensB,
+              time: prev?.interfaceB?.time || "0m 0s",
+            },
+          };
+        });
+
+        // finalize when both groups have finished
+        setTimeout(() => {
+          const a = groupFinishTimes.A ?? null;
+          const b = groupFinishTimes.B ?? null;
+          // read latest active agent counts from state variables
+          const finishedA = typeof a === "number" || activeAgentsA === 0;
+          const finishedB = typeof b === "number" || activeAgentsB === 0;
+          if (finishedA && finishedB) {
+            try {
+              eventSource.close();
+            } catch (e) {}
+            if (debugSource)
+              try {
+                debugSource.close();
+              } catch (e) {}
+            setIsRunning(false);
+            setProgress(100);
+            setTestResults({
+              interfaceA: {
+                activeAgents: 0,
+                tokens: 345,
+                time: typeof a === "number" ? `${Math.round(a / 1000)}s` : "0s",
+              },
+              interfaceB: {
+                activeAgents: 0,
+                tokens: 398,
+                time: typeof b === "number" ? `${Math.round(b / 1000)}s` : "0s",
+              },
+              winner: "B",
+              confidence: 94.2,
+              duration: `${Math.round((Date.now() - startTs) / 1000)}s`,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        }, 50);
       } catch (error) {
         console.error("Ошибка парсинга JSON:", error);
       }
     };
+
+    // if no messages within 3s, open debug stream so user can see raw events
+    setTimeout(() => {
+      if (!messagesReceived) {
+        console.warn(
+          "No SSE messages received for task",
+          taskId,
+          "- opening debug stream",
+        );
+        debugSource = new EventSource(
+          "http://localhost:8000/api/events/__debug__",
+        );
+        debugSource.onmessage = (e) => console.debug("DEBUG SSE:", e.data);
+        debugSource.onerror = (e) => console.error("DEBUG SSE error", e);
+      }
+    }, 3000);
 
     await fetch("http://localhost:8000/api/tasks", {
       method: "POST",
@@ -192,62 +334,23 @@ export function AbTesting() {
           llm: currentWorkspace!.llmConfig,
         },
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     });
 
-    
-    setIsRunning(true);
-    setProgress(0);
-    setTestResults(null);
-    setIntermediateResults(null);
-
-    console.log(totalCount)
-
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + 0.1;
-
-        if (next < 100) {
-          // if (next > 20 && next < 100) {
-          setIntermediateResults({
-            interfaceA: {
-              activeAgents: activeAgentsA,
-              tokens: Math.round((next / 100) * 345),
-              time: "2m 34s",
-            },
-            interfaceB: {
-              activeAgents: activeAgentsB,
-              tokens: Math.round((next / 100) * 398),
-              time: "3m 12s",
-            },
-          });
-        }
-
-        if (next >= 100) {
-          eventSource.close()
-          clearInterval(interval);
-          setIsRunning(false);
-          setTestResults({
-            interfaceA: {
-              activeAgents: activeAgentsA,
-              tokens: 345,
-              time: "2m 34s",
-            },
-            interfaceB: {
-              activeAgents: activeAgentsB,
-              tokens: 398,
-              time: "3m 12s",
-            },
-            winner: "B",
-            confidence: 94.2,
-            duration: "4h 23m",
-            timestamp: new Date().toISOString(),
-          });
+    // progress updater based on remaining active agents
+    const intervalId = setInterval(() => {
+      setProgress(() => {
+        const remaining = activeAgentsA + activeAgentsB;
+        const done = totalCount - remaining;
+        const pct =
+          totalCount > 0
+            ? Math.min(100, Math.round((done / totalCount) * 100))
+            : 0;
+        if (pct >= 100 || (activeAgentsA === 0 && activeAgentsB === 0)) {
+          clearInterval(intervalId);
           return 100;
         }
-        return next;
+        return pct;
       });
     }, 500);
   };

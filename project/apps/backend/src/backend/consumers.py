@@ -1,10 +1,12 @@
 import asyncio
 
+from ab_agent.graphs.full import AgentInput, graph
+from ab_agent.schemas.state import Group, LLMConfig
+from shared.rabbitmq import set_current_run_id
+
 from backend.broker import broker
 from backend.handlers.api import run_api_test
 from backend.handlers.ui import run_ui_test
-from ab_agent.graphs.full import graph, AgentInput
-from ab_agent.schemas.state import Group, LLMConfig
 
 
 # 'payload': {
@@ -18,24 +20,28 @@ from ab_agent.schemas.state import Group, LLMConfig
 #             'count': 10, 
 #             'color': '#3b82f6', 
 #             'type': 'poor_worker'
-#         }, 
-#         {
-#             'id': '2', 
-#             'name': 'Group B', 
-#             'count': 10, 'color': '#10b981', 
-#             'type': 'retired'
-#         }
-#     ], 
-#     'llm': {
-#         'type': 'online', 
-#         'temperature': 0.7, 
-#         'provider': 'MistralAI', 
-#         'apiKey': 'dasdas', 
-#         'modelName': 'dsadasdasd', 
-#         'maxTokens': 54353453
-#     }
+#        }, 
+#        {
+#            'id': '2', 
+#            'name': 'Group B', 
+#            'count': 10, 'color': '#10b981', 
+#            'type': 'retired'
+#        }
+#    ], 
+#    'llm': {
+#        'type': 'online', 
+#        'temperature': 0.7, 
+#        'provider': 'MistralAI', 
+#        'apiKey': 'dasdas', 
+#        'modelName': 'dsadasdasd', 
+#        'maxTokens': 54353453
+#    }
 # }
-async def run_graph(payload: dict):
+async def run_graph(payload: dict, task_id: str | None = None):
+    # bind task id globally so event buses created inside graph include it
+    if task_id:
+        set_current_run_id(task_id)
+
     llm_raw_data = payload.get('llm', {})
     llm = LLMConfig(
         type=llm_raw_data.get('type'),
@@ -62,6 +68,10 @@ async def run_graph(payload: dict):
         llm=llm,
     ))
 
+    # clear global run id after graph finishes
+    if task_id:
+        set_current_run_id(None)
+
     return result
 
 @broker.subscriber("test.requests")
@@ -84,5 +94,5 @@ async def handle_request(msg: dict):
     elif test_type == "ui":
         asyncio.create_task(
             # run_ui_test(task_id)
-            run_graph(msg.get('payload', {}))
+            run_graph(msg.get('payload', {}), task_id=task_id)
         )
