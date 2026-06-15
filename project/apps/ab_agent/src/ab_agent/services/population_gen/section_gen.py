@@ -245,7 +245,7 @@ def generate_personal_style(cluster_key: str, gender: str, lifestyle: List[str])
 ####################################################
 ##########        PERSON GENERATION       ##########
 ####################################################
-def generate_persona(cluster_key=None):
+def generate_persona(cluster_key: str | None = None):
     if cluster_key is None:
         cluster_key = random.choice(list(PERSONA_CLUSTERS.keys()))
 
@@ -296,74 +296,74 @@ def generate_persona(cluster_key=None):
 ####################################################
 ##########          SPLIT ON GROUPS       ##########
 ####################################################
-@dataclass
-class Person:
-    description: str
-    group: str
-    id: uuid.UUID
+# @dataclass
+# class Person:
+#     description: str
+#     group: str
+#     id: uuid.UUID
 
 
-COUNT = 6
-persons = []
-for i in range(COUNT):
-    desc, group, id = generate_persona()
-    persons.append(Person(desc, group, id))
+# COUNT = 6
+# persons = []
+# for i in range(COUNT):
+#     desc, group, id = generate_persona()
+#     persons.append(Person(desc, group, id))
 
 
-grouped = defaultdict(list)
-for person in persons:
-    grouped[person.group].append(person)
+# grouped = defaultdict(list)
+# for person in persons:
+#     grouped[person.group].append(person)
 
 
-def get_hash(s: str) -> int:
-    h = hashlib.md5(s.encode("utf-8")).digest()
-    return int.from_bytes(h, "big")
+# def get_hash(s: str) -> int:
+#     h = hashlib.md5(s.encode("utf-8")).digest()
+#     return int.from_bytes(h, "big")
 
 
-def split_array(persons):
-    items = [(get_hash(str(p.id)), p) for p in persons]
-    items.sort(key=lambda x: x[0])
-    A, B = [], []
-    for i, (_, p) in enumerate(items):
-        (A if (i % 2 == 0) else B).append(p)
+# def split_array(persons):
+#     items = [(get_hash(str(p.id)), p) for p in persons]
+#     items.sort(key=lambda x: x[0])
+#     A, B = [], []
+#     for i, (_, p) in enumerate(items):
+#         (A if (i % 2 == 0) else B).append(p)
 
-    return A, B
-
-
-A: List[Person] = []
-B: List[Person] = []
-for persons in grouped.values():
-    a_part, b_part = split_array(persons)
-    A.extend(a_part)
-    B.extend(b_part)
+#     return A, B
 
 
-def rebalance_min_moves(A: list, B: list):
-    diff = len(A) - len(B)
-    if abs(diff) <= 1:
-        return A, B
-    if diff > 0:
-        move = diff // 2 if diff % 2 == 0 else (diff + 1) // 2
-        B.extend(A[-move:])
-        del A[-move:]
-    else:
-        move = (-diff) // 2 if (-diff) % 2 == 0 else ((-diff) + 1) // 2
-        A.extend(B[-move:])
-        del B[-move:]
-    return A, B
+# A: List[Person] = []
+# B: List[Person] = []
+# for persons in grouped.values():
+#     a_part, b_part = split_array(persons)
+#     A.extend(a_part)
+#     B.extend(b_part)
 
 
-A, B = rebalance_min_moves(A, B)
+# def rebalance_min_moves(A: list, B: list):
+#     diff = len(A) - len(B)
+#     if abs(diff) <= 1:
+#         return A, B
+#     if diff > 0:
+#         move = diff // 2 if diff % 2 == 0 else (diff + 1) // 2
+#         B.extend(A[-move:])
+#         del A[-move:]
+#     else:
+#         move = (-diff) // 2 if (-diff) % 2 == 0 else ((-diff) + 1) // 2
+#         A.extend(B[-move:])
+#         del B[-move:]
+#     return A, B
 
-len_a, len_b = len(A), len(B)
-print(f"Count of people in A = {len_a}")
-print(f"Count of people in B = {len_b}")
 
-for i in range(len(A)):
-    print(f"Group from A is '{A[i].group}'")
-print("--------------------------------")
-for i in range(len(B)):
-    print(f"Group from B is '{B[i].group}'")
+# A, B = rebalance_min_moves(A, B)
 
-# with open('output_file.txt', 'w') as f:
-#     f.write(generate_persona())
+# len_a, len_b = len(A), len(B)
+# print(f"Count of people in A = {len_a}")
+# print(f"Count of people in B = {len_b}")
+
+# for i in range(len(A)):
+#     print(f"Group from A is '{A[i].group}'")
+# print("--------------------------------")
+# for i in range(len(B)):
+#     print(f"Group from B is '{B[i].group}'")
+
+# # with open('output_file.txt', 'w') as f:
+# #     f.write(generate_persona())

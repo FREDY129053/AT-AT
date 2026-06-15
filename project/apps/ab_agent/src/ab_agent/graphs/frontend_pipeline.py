@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 DEBUG = True
 
+
 async def full_perceive(state: AgentState):
     mems = await state.memory.get_all_items()
     if len(mems) != 0:
@@ -77,7 +78,7 @@ async def start_node(raw_input: Input) -> AgentState:
 async def run_uxagent(state: AgentState):
     event_bus = create_event_bus()
     await event_bus.broker.start()
-    
+
     async def run_slow_loop():
         while True:
             await slow_loop_graph.ainvoke(state)

@@ -27,6 +27,7 @@ async def execute_node(state: AgentState, runtime: Runtime[Context]) -> dict:
         agent_id=agent_id,
         # "agent_group": "",
         # "agent_type": "",
+        agent_group=state.agent_group,
         curr_step=steps,
         max_steps=max_steps,
         terminate=terminate,

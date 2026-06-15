@@ -3,10 +3,64 @@ import asyncio
 from backend.broker import broker
 from backend.handlers.api import run_api_test
 from backend.handlers.ui import run_ui_test
-from ab_agent.graphs.frontend_pipeline import graph, Input
+from ab_agent.graphs.full import graph, AgentInput
+from ab_agent.schemas.state import Group, LLMConfig
 
+
+# 'payload': {
+#     'interface_a': 'dsa', 
+#     'interface_b': 'das', 
+#     'intent': 'das', 
+#     'groups': [
+#         {
+#             'id': '1', 
+#             'name': 'Group A', 
+#             'count': 10, 
+#             'color': '#3b82f6', 
+#             'type': 'poor_worker'
+#         }, 
+#         {
+#             'id': '2', 
+#             'name': 'Group B', 
+#             'count': 10, 'color': '#10b981', 
+#             'type': 'retired'
+#         }
+#     ], 
+#     'llm': {
+#         'type': 'online', 
+#         'temperature': 0.7, 
+#         'provider': 'MistralAI', 
+#         'apiKey': 'dasdas', 
+#         'modelName': 'dsadasdasd', 
+#         'maxTokens': 54353453
+#     }
+# }
 async def run_graph(payload: dict):
-    result = await graph.ainvoke(Input(data=payload))
+    llm_raw_data = payload.get('llm', {})
+    llm = LLMConfig(
+        type=llm_raw_data.get('type'),
+        temperature=llm_raw_data.get('temperature'),
+        provider=llm_raw_data.get('provider'),
+        api_key=llm_raw_data.get('apiKey'),
+        model_name=llm_raw_data.get('modelName'),
+        max_tokens=llm_raw_data.get('maxTokens'),
+    )
+
+    groups = []
+    for group in payload.get("groups", []):
+        groups.append(Group(
+            count=group.get('count', 0),
+            type=group.get('type', None)
+        ))
+
+
+    result = await graph.ainvoke(AgentInput(
+        interface_a=payload.get('interface_a', ""),
+        interface_b=payload.get('interface_b', ""),
+        intent=payload.get('intent', ""),
+        groups=groups,
+        llm=llm,
+    ))
 
     return result
 

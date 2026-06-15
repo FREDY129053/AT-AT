@@ -64,6 +64,8 @@ export function AbTesting() {
   const [progress, setProgress] = useState(0);
   const [testResults, setTestResults] = useState<any>(null);
   const [intermediateResults, setIntermediateResults] = useState<any>(null);
+  // const [activeAgentsA, setActiveAgentsA] = useState(0);
+  // const [activeAgentsB, setActiveAgentsB] = useState(0);
 
   const currentWorkspace = useAppStore((state) =>
     state.workspaces.find((w) => w.id === state.activeWorkspaceId),
@@ -156,17 +158,26 @@ export function AbTesting() {
     )
       return;
 
-    const taskId = currentWorkspace!.name;
+    // const taskId = currentWorkspace!.name;
+    const taskId = "99";
 
-    // const eventSource = new EventSource(
-    //   `http://localhost:8000/api/events/${taskId}`,
-    // );
+    const eventSource = new EventSource(
+      `http://localhost:8000/api/events/${taskId}`,
+    );
 
-    // eventSource.addEventListener("update", (event) => {
-    //   console.log("RAW:", event.data); // покажет строку без парсинга
-    //   const parsed = JSON.parse(event.data);
-    //   console.log("Parsed:", parsed);
-    // });
+    let activeAgentsA = totalCount / 2;
+    let activeAgentsB = totalCount / 2;
+
+    eventSource.onmessage = (event) => {
+      console.log("RAW:", event.data); // покажет строку без парсинга
+      
+      try {
+        const parsed = JSON.parse(event.data);
+        console.log("Parsed:", parsed);
+      } catch (error) {
+        console.error("Ошибка парсинга JSON:", error);
+      }
+    };
 
     await fetch("http://localhost:8000/api/tasks", {
       method: "POST",
@@ -186,24 +197,28 @@ export function AbTesting() {
       },
     });
 
+    
     setIsRunning(true);
     setProgress(0);
     setTestResults(null);
     setIntermediateResults(null);
 
+    console.log(totalCount)
+
     const interval = setInterval(() => {
       setProgress((prev) => {
-        const next = prev + Math.random() * 8;
+        const next = prev + 0.1;
 
-        if (next > 20 && next < 100) {
+        if (next < 100) {
+          // if (next > 20 && next < 100) {
           setIntermediateResults({
             interfaceA: {
-              activeAgents: Math.round((next / 100) * 1250),
+              activeAgents: activeAgentsA,
               tokens: Math.round((next / 100) * 345),
               time: "2m 34s",
             },
             interfaceB: {
-              activeAgents: Math.round((next / 100) * 1280),
+              activeAgents: activeAgentsB,
               tokens: Math.round((next / 100) * 398),
               time: "3m 12s",
             },
@@ -211,17 +226,17 @@ export function AbTesting() {
         }
 
         if (next >= 100) {
-          // eventSource.close()
+          eventSource.close()
           clearInterval(interval);
           setIsRunning(false);
           setTestResults({
             interfaceA: {
-              activeAgents: 1250,
+              activeAgents: activeAgentsA,
               tokens: 345,
               time: "2m 34s",
             },
             interfaceB: {
-              activeAgents: 1280,
+              activeAgents: activeAgentsB,
               tokens: 398,
               time: "3m 12s",
             },
