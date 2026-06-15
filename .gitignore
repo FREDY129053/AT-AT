@@ -374,3 +374,7 @@ sftp-config.json
 # Visual Studio Code - https://code.visualstudio.com/
 .settings/
 .vscode/
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
