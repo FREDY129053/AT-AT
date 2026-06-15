@@ -23,6 +23,7 @@ dependencies = [
     "langgraph>=1.1.10",
     "ipython>=9.14.0",
     "grandalf>=0.8",
+    "redis>=8.0.0",
 ]
 
 [project.scripts]
